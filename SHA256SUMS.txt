@@ -1,3 +1,4 @@
+fe3a8bdb4c85a9df642c03b019247b08a05e3ff4458ac1c01e8f794308b538ae  ./evidence/authz/attacker_model.md
 df972a928dd8847f26bc242352d293b6d087d500c1dafdb4995185117586d88f  ./evidence/authz/authorization_analysis.md
 a37d4712ba0e82983fbae3d7fee727c429b71374f51664d93f28e2cd16e5e298  ./evidence/authz/authz_decision_tests.stdout
 c41af2246454a1359bdac13eb35a8e9ec79f9734c66aa8e7fadbb3ec4ca7b470  ./evidence/authz/bundle_signature_flow.txt
@@ -71,7 +72,7 @@ a2b58cb14025205e812e25ebde8fa2a41d5fbdc18a828ffc2461a2fb5be38a75  ./poc/hardenin
 48a3e0d82957b12b3bbc7b3f5ba029160f12de111926034446ac7cd987f9e802  ./poc/hardening/run_matrix.sh
 d62cebc90b3f5bd89de2e5ff2a642e01324c5acecc36faa74f847f827f482ee6  ./poc/rt01/listener.py
 20b0b2ec16acafa8c554dace93b089b0cb71e7b51098739fc1fed1253bd85e58  ./poc/rt01/poc_native_venv_rce.py
-ba0db984fb357781765a78f6d91eef66a22f535899ec7a56a7393f6882f96d31  ./README.md
+8f700c5d0079bf2f6870b7d7713a6d2b987b6239d5073cbec99f4c190b08e3e5  ./README.md
 e20d9ac36f0780787019ed224ec7a7b900950e86a300f05c3941dd79c481c314  ./report-hardening-verification.md
 8c5810a32361ffd1c5b9e12efaa7c411129c710b12ca1b3bc7c9d7186ea474e0  ./report-rt01.md
 8b445b8b2c4164c0ddba2c43da0401e0088bf167d0e1fec19dfa353336932d89  ./SHA256SUMS-hardening.txt

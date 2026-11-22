@@ -46,7 +46,8 @@ Public reference: [GHSA-rhfp-jw6w-wrqq](https://github.com/julep-ai/julep/securi
 
 - [`report-rt01.md`](report-rt01.md) — original finding: `native_venv` escape, verified with live exfiltration (`poc/rt01/`, `evidence/rt01/`)
 - [`report-hardening-verification.md`](report-hardening-verification.md) — verification/addendum: proposed hardening variants A/B1/B2, bypass payloads, patch diffs, 14-assertion run matrix (`poc/hardening/`, `evidence/hardening/`)
-- [`evidence/authz/authorization_analysis.md`](evidence/authz/authorization_analysis.md) — supporting appendix: route authz inventory, authentication decisions, signature verification, attacker-prerequisite analysis
+- [`evidence/authz/authorization_analysis.md`](evidence/authz/authorization_analysis.md) — supporting appendix: route authz inventory, authentication decisions, signature verification, native-grant binding
+- [`evidence/authz/attacker_model.md`](evidence/authz/attacker_model.md) — complete enumeration of pure-source entry paths and attacker prerequisites
 
 ## Affected
 
@@ -89,15 +90,20 @@ native grant → worker execution` was tested at four levels:
    `executorTier`-removal tampering and the env-var grant path.
 
 Conclusion: ordinary client credentials cannot publish bundles or reach
-mutating admin routes. Full exploitation requires all three controls at once —
-admin publication rights, an allowlisted operator signature over a manifest
-whose `executorTier:"native"` claim is inside the signed bytes, and a
-worker-side `JULEP_PURE_NATIVE_DEPS` grant. No single compromised credential
-suffices; the realistic scenario is a release/signing pipeline holding both
-publication and signing capability targeting an already-granted worker. This
-is why RT-01 is scored `PR:H` (7.2), not `PR:L` (8.8). Remaining
-deployment-specific unknowns: whether a given deployment delegates admin keys
-to tenants, and whether a third party can obtain an accepted signature.
+mutating admin routes. A full path enumeration
+([`evidence/authz/attacker_model.md`](evidence/authz/attacker_model.md)) found
+**no route for an unauthenticated or client-role attacker** to introduce
+executable source onto a `native_venv` worker — every path terminates at an
+admin API call plus an operator-held signing key, or operator env vars.
+Exploitation therefore requires all three controls at once: admin publication
+rights, an allowlisted operator signature over a manifest whose
+`executorTier:"native"` claim is inside the signed bytes, and a worker-side
+`JULEP_PURE_NATIVE_DEPS` grant. This is why RT-01 is scored `PR:H` (7.2), not
+`PR:L` (8.8). The finding is a sandbox-boundary failure: the native tier's
+documented purpose is dependency installation, but it grants unrestricted
+host `exec()` to any authorized bundle. Remaining deployment-specific
+unknowns: whether a given deployment delegates admin keys or bundle signing
+to tenants.
 
 ## Recommendation
 
