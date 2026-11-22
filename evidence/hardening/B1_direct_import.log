@@ -1,0 +1,7 @@
+[2026-11-22T10:08:27Z] START B1_direct_import src=B1 pure=poc.direct_import.v1 payload=payloads/direct_import.py port=8925
+[*] src=/tmp/opencode/julep-hard/B1
+[*] pure=poc.direct_import.v1 bundle=42d69e40551ae7f2be584376f144c8648a06d56680dddcda4be252f426d7b424 signer=2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12
+[*] registered tier=native_venv
+[RUNTIME_BLOCKED] ImportError: __import__ not found
+PROBE_RESULT {"result": "RUNTIME_BLOCKED"}
+[2026-11-22T10:08:28Z] END B1_direct_import rc=0

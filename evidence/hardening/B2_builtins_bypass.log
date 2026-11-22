@@ -1,0 +1,7 @@
+[2026-11-22T10:08:31Z] START B2_builtins_bypass src=B2 pure=poc.builtins_bypass.v1 payload=payloads/builtins_bypass.py port=8930
+[*] src=/tmp/opencode/julep-hard/B2
+[*] pure=poc.builtins_bypass.v1 bundle=bb76efa15013b1b5cd050340b132c630d3ab47760622e2ebd1b5ec24d5d27b01 signer=2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12
+[BLOCKED] BundleResolutionError: pure 'poc.builtins_bypass.v1' uses forbidden reflection attribute '__subclasses__'
+{"reason": "pure 'poc.builtins_bypass.v1' uses forbidden reflection attribute '__subclasses__'", "result": "BLOCKED"}
+PROBE_RESULT {"result": "BLOCKED"}
+[2026-11-22T10:08:32Z] END B2_builtins_bypass rc=0

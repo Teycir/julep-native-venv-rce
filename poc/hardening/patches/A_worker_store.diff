@@ -1,0 +1,14 @@
+--- /home/kali/research/julep/julep/worker_store.py	2026-11-21 16:42:40.108853357 -0500
++++ A/julep/worker_store.py	2026-11-22 05:02:58.870406122 -0500
+@@ -405,6 +405,11 @@
+             scratch.register_pure_from_source(
+                 pure_record.name,
+                 pure_record.source,
++                tier=(
++                    "native_venv"
++                    if pure_record.executor_tier == "native"
++                    else "wasm"
++                ),
+                 validate_dependency_imports=False,
+                 validate_source_size=False,
+             )

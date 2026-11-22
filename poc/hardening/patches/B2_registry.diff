@@ -1,0 +1,85 @@
+--- /home/kali/research/julep/julep/registry.py	2026-11-21 16:42:40.106542148 -0500
++++ B2/julep/registry.py	2026-11-22 05:03:35.132094411 -0500
+@@ -66,6 +66,22 @@
+     xmlrpc zipapp zipfile zipimport zlib zoneinfo
+     """.split()
+ )
++# Modules that are only safe inside the wasm guest. On the native_venv tier the
++# source runs in a real host subprocess with no sandbox, so importing any of
++# these grants direct process/filesystem/network access.
++_NATIVE_VENV_FORBIDDEN_STDLIB_MODULES = frozenset(
++    """
++    os subprocess ctypes socket importlib multiprocessing signal mmap resource
++    pty fcntl posix nt msvcrt winreg _posixsubprocess sys builtins
++    """.split()
++)
++_REFLECTION_NAMES = frozenset(
++    {"__import__", "eval", "exec", "compile", "globals", "vars"}
++)
++_REFLECTION_ATTRS = frozenset(
++    {"__builtins__", "__globals__", "__subclasses__", "__loader__", "__spec__"}
++)
++
+ _DEPENDENCY_IMPORT_ALIASES: dict[str, frozenset[str]] = {
+     "beautifulsoup4": frozenset({"bs4"}),
+     "pillow": frozenset({"PIL"}),
+@@ -151,6 +167,7 @@
+     name: str,
+     source: str,
+     *,
++    tier: str = "wasm",
+     allow_dependencies: bool = False,
+     validate_dependency_imports: bool = True,
+     validate_source_size: bool = True,
+@@ -170,11 +187,31 @@
+         )
+ 
+     tree = ast.parse(source)
++    for node in ast.walk(tree):
++        if isinstance(node, ast.Name) and (
++            node.id in _REFLECTION_NAMES
++            or (node.id.startswith("__") and node.id.endswith("__"))
++        ):
++            raise ValueError(
++                f"pure {name!r} uses forbidden reflection name {node.id!r}"
++            )
++        if isinstance(node, ast.Attribute) and (
++            node.attr in _REFLECTION_ATTRS
++            or (node.attr.startswith("__") and node.attr.endswith("__"))
++        ):
++            raise ValueError(
++                f"pure {name!r} uses forbidden reflection attribute {node.attr!r}"
++            )
+     third_party: set[str] = set()
+     for node in ast.walk(tree):
+         if isinstance(node, ast.Import):
+             for alias in node.names:
+                 root = alias.name.partition(".")[0]
++                if tier == "native_venv" and root in _NATIVE_VENV_FORBIDDEN_STDLIB_MODULES:
++                    raise ValueError(
++                        f"pure {name!r} imports {root!r}, which is not permitted in "
++                        "the native_venv tier"
++                    )
+                 if root not in _WASM_GUEST_STDLIB_MODULES:
+                     third_party.add(root)
+         elif isinstance(node, ast.ImportFrom):
+@@ -184,6 +221,11 @@
+                     "executes as a standalone module"
+                 )
+             root = (node.module or "").partition(".")[0]
++            if tier == "native_venv" and root in _NATIVE_VENV_FORBIDDEN_STDLIB_MODULES:
++                raise ValueError(
++                    f"pure {name!r} imports {root!r}, which is not permitted in "
++                    "the native_venv tier"
++                )
+             if root and root not in _WASM_GUEST_STDLIB_MODULES:
+                 third_party.add(root)
+     if third_party and (not allow_dependencies or not declared_deps):
+@@ -463,6 +505,7 @@
+         _validate_portable_source(
+             name,
+             source,
++            tier=tier,
+             allow_dependencies=True,
+             validate_dependency_imports=validate_dependency_imports,
+             validate_source_size=validate_source_size,

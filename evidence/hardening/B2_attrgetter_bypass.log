@@ -1,0 +1,7 @@
+[2026-11-22T10:08:29Z] START B2_attrgetter_bypass src=B2 pure=poc.attrgetter_bypass.v1 payload=payloads/attrgetter_bypass.py port=8928
+[*] src=/tmp/opencode/julep-hard/B2
+[*] pure=poc.attrgetter_bypass.v1 bundle=4bf7426cb9656caa03083aa22aa4197798b7315e75c12aba7d29b5f20fd1b2b9 signer=2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12
+[*] registered tier=native_venv
+[RUNTIME_BLOCKED] ImportError: __import__ not found
+PROBE_RESULT {"result": "RUNTIME_BLOCKED"}
+[2026-11-22T10:08:30Z] END B2_attrgetter_bypass rc=0

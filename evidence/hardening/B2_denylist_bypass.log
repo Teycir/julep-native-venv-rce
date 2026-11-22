@@ -1,0 +1,7 @@
+[2026-11-22T10:08:30Z] START B2_denylist_bypass src=B2 pure=poc.denylist_bypass.v1 payload=payloads/denylist_bypass.py port=8929
+[*] src=/tmp/opencode/julep-hard/B2
+[*] pure=poc.denylist_bypass.v1 bundle=4926e98cd735327bfe125b55433c7156d3e6c1c9b426c1d1ff1cac66979d2013 signer=2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12
+[BLOCKED] BundleResolutionError: pure 'poc.denylist_bypass.v1' uses forbidden reflection attribute '__import__'
+{"reason": "pure 'poc.denylist_bypass.v1' uses forbidden reflection attribute '__import__'", "result": "BLOCKED"}
+PROBE_RESULT {"result": "BLOCKED"}
+[2026-11-22T10:08:31Z] END B2_denylist_bypass rc=0

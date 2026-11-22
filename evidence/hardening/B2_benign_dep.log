@@ -1,0 +1,7 @@
+[2026-11-22T10:08:35Z] START B2_benign_dep src=B2 pure=poc.benign_dep.v1 payload=payloads/benign_dep_import.py port=8932
+[*] src=/tmp/opencode/julep-hard/B2
+[*] pure=poc.benign_dep.v1 bundle=d7fd337480b1fb83480ba02cb61e83bb15e2c905113cc2c8f7977f12a272d0f9 signer=2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12
+[*] registered tier=native_venv
+[RUNTIME_BLOCKED] ImportError: __import__ not found
+PROBE_RESULT {"result": "RUNTIME_BLOCKED"}
+[2026-11-22T10:08:36Z] END B2_benign_dep rc=0

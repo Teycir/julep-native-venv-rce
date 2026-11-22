@@ -1,0 +1,7 @@
+[2026-11-22T10:08:21Z] START A_direct_import src=A pure=poc.direct_import.v1 payload=payloads/direct_import.py port=8921
+[*] src=/tmp/opencode/julep-hard/A
+[*] pure=poc.direct_import.v1 bundle=42d69e40551ae7f2be584376f144c8648a06d56680dddcda4be252f426d7b424 signer=2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12
+[BLOCKED] BundleResolutionError: pure 'poc.direct_import.v1' imports 'os', which is not permitted in the native_venv tier
+{"reason": "pure 'poc.direct_import.v1' imports 'os', which is not permitted in the native_venv tier", "result": "BLOCKED"}
+PROBE_RESULT {"result": "BLOCKED"}
+[2026-11-22T10:08:22Z] END A_direct_import rc=0

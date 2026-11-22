@@ -1,0 +1,8 @@
+[2026-11-22T10:08:32Z] START B2_benign src=B2 pure=poc.benign.v1 payload=payloads/benign.py port=8931
+[*] src=/tmp/opencode/julep-hard/B2
+[*] pure=poc.benign.v1 bundle=1323431b19132c3a77cd353ae6bb4338153986a27e6f2b2352070b8435e2616b signer=2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12
+[*] registered tier=native_venv
+[*] return value: {"count": 3, "label": "BENIGN", "ok": true, "sum": 6}
+[*] elapsed=0.03s
+PROBE_RESULT {"proof": null, "proof_sha256": null, "result": "EXECUTED", "value": {"count": 3, "label": "BENIGN", "ok": true, "sum": 6}}
+[2026-11-22T10:08:35Z] END B2_benign rc=0

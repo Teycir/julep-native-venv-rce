@@ -1,0 +1,156 @@
+[
+  {
+    "case": "baseline_original_prior_poc",
+    "classification": "High (RT-01)",
+    "payload": "published PoC",
+    "proof_sha256": "aa711e8b5024db98fab9895356c48204e809b8c8226fdd9193524be733862553",
+    "rc": 0,
+    "result": "EXPLOITED",
+    "started_at_utc": "2026-11-22T10:08:19Z",
+    "variant": "unmodified fc74d07",
+    "verified_at_utc": "2026-11-22T10:08:20Z"
+  },
+  {
+    "case": "original_direct_import",
+    "classification": "High (RT-01)",
+    "payload": "direct_import",
+    "proof_sha256": "772f793f1deecd92e245125d06d6cd27984cefac760e617764c070cf495141ff",
+    "rc": 0,
+    "result": "EXECUTED",
+    "started_at_utc": "2026-11-22T10:08:20Z",
+    "variant": "unmodified fc74d07",
+    "verified_at_utc": "2026-11-22T10:08:21Z"
+  },
+  {
+    "case": "A_direct_import",
+    "classification": "blocked",
+    "payload": "direct_import",
+    "proof_sha256": null,
+    "rc": 0,
+    "result": "BLOCKED",
+    "started_at_utc": "2026-11-22T10:08:21Z",
+    "variant": "A: tier denylist + reflection ban",
+    "verified_at_utc": "2026-11-22T10:08:22Z"
+  },
+  {
+    "case": "A_attrgetter_bypass",
+    "classification": "High (RT-02)",
+    "payload": "attrgetter_bypass",
+    "proof_sha256": "8c7acb68a5cf54241c72007a27a863d3682b912cf4860064937ab1708e6e149f",
+    "rc": 0,
+    "result": "EXECUTED",
+    "started_at_utc": "2026-11-22T10:08:22Z",
+    "variant": "A: tier denylist + reflection ban",
+    "verified_at_utc": "2026-11-22T10:08:23Z"
+  },
+  {
+    "case": "A_denylist_bypass",
+    "classification": "High (RT-02)",
+    "payload": "denylist_bypass",
+    "proof_sha256": "837464424689adb7428c6ce9461d47d5ec9fe1c3742f6f0060b3e64cb9db837f",
+    "rc": 0,
+    "result": "EXECUTED",
+    "started_at_utc": "2026-11-22T10:08:23Z",
+    "variant": "A: tier denylist + reflection ban",
+    "verified_at_utc": "2026-11-22T10:08:23Z"
+  },
+  {
+    "case": "A_benign_dep",
+    "classification": "functional",
+    "payload": "benign_dep_import",
+    "proof_sha256": null,
+    "rc": 0,
+    "result": "EXECUTED",
+    "started_at_utc": "2026-11-22T10:08:23Z",
+    "variant": "A: tier denylist + reflection ban",
+    "verified_at_utc": "2026-11-22T10:08:27Z"
+  },
+  {
+    "case": "B1_direct_import",
+    "classification": "blocked",
+    "payload": "direct_import",
+    "proof_sha256": null,
+    "rc": 0,
+    "result": "RUNTIME_BLOCKED",
+    "started_at_utc": "2026-11-22T10:08:27Z",
+    "variant": "B1: restricted builtins only",
+    "verified_at_utc": "2026-11-22T10:08:28Z"
+  },
+  {
+    "case": "B1_builtins_bypass",
+    "classification": "High (RT-03)",
+    "payload": "builtins_bypass",
+    "proof_sha256": "561db0c3f88ccef13934ed9dda971591e3f52e6496f3eb2e0ac6e4300c4d39da",
+    "rc": 0,
+    "result": "EXECUTED",
+    "started_at_utc": "2026-11-22T10:08:28Z",
+    "variant": "B1: restricted builtins only",
+    "verified_at_utc": "2026-11-22T10:08:29Z"
+  },
+  {
+    "case": "B2_direct_import",
+    "classification": "blocked",
+    "payload": "direct_import",
+    "proof_sha256": null,
+    "rc": 0,
+    "result": "BLOCKED",
+    "started_at_utc": "2026-11-22T10:08:29Z",
+    "variant": "B2: layered denylist + dunder ban + restricted builtins",
+    "verified_at_utc": "2026-11-22T10:08:29Z"
+  },
+  {
+    "case": "B2_attrgetter_bypass",
+    "classification": "blocked",
+    "payload": "attrgetter_bypass",
+    "proof_sha256": null,
+    "rc": 0,
+    "result": "RUNTIME_BLOCKED",
+    "started_at_utc": "2026-11-22T10:08:29Z",
+    "variant": "B2: layered",
+    "verified_at_utc": "2026-11-22T10:08:30Z"
+  },
+  {
+    "case": "B2_denylist_bypass",
+    "classification": "blocked",
+    "payload": "denylist_bypass",
+    "proof_sha256": null,
+    "rc": 0,
+    "result": "BLOCKED",
+    "started_at_utc": "2026-11-22T10:08:30Z",
+    "variant": "B2: layered",
+    "verified_at_utc": "2026-11-22T10:08:31Z"
+  },
+  {
+    "case": "B2_builtins_bypass",
+    "classification": "blocked",
+    "payload": "builtins_bypass",
+    "proof_sha256": null,
+    "rc": 0,
+    "result": "BLOCKED",
+    "started_at_utc": "2026-11-22T10:08:31Z",
+    "variant": "B2: layered",
+    "verified_at_utc": "2026-11-22T10:08:32Z"
+  },
+  {
+    "case": "B2_benign",
+    "classification": "functional",
+    "payload": "benign",
+    "proof_sha256": null,
+    "rc": 0,
+    "result": "EXECUTED",
+    "started_at_utc": "2026-11-22T10:08:32Z",
+    "variant": "B2: layered",
+    "verified_at_utc": "2026-11-22T10:08:35Z"
+  },
+  {
+    "case": "B2_benign_dep",
+    "classification": "regression",
+    "payload": "benign_dep_import",
+    "proof_sha256": null,
+    "rc": 0,
+    "result": "RUNTIME_BLOCKED",
+    "started_at_utc": "2026-11-22T10:08:35Z",
+    "variant": "B2: layered",
+    "verified_at_utc": "2026-11-22T10:08:36Z"
+  }
+]

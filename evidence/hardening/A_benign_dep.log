@@ -1,0 +1,8 @@
+[2026-11-22T10:08:23Z] START A_benign_dep src=A pure=poc.benign_dep.v1 payload=payloads/benign_dep_import.py port=8924
+[*] src=/tmp/opencode/julep-hard/A
+[*] pure=poc.benign_dep.v1 bundle=d7fd337480b1fb83480ba02cb61e83bb15e2c905113cc2c8f7977f12a272d0f9 signer=2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12
+[*] registered tier=native_venv
+[*] return value: {"loaded": true, "module": "<class 'module'>"}
+[*] elapsed=0.03s
+PROBE_RESULT {"proof": null, "proof_sha256": null, "result": "EXECUTED", "value": {"loaded": true, "module": "<class 'module'>"}}
+[2026-11-22T10:08:27Z] END A_benign_dep rc=0
