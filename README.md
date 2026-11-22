@@ -9,17 +9,17 @@ The `native_venv` execution tier runs bundle-supplied source with
 `import os` / `import subprocess` achieves host RCE and data exfiltration —
 verified end-to-end with a live listener (`poc/rt01/`, `evidence/rt01/`).
 
-**RT-01 — production finding, High 7.2** (`AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`).
-Exploitation must satisfy **three controls simultaneously**: (1) an admin-level
-API key to publish a bundle (`require_admin` routes), (2) an Ed25519 signature
-from a worker-allowlisted operator key, and (3) a worker-side
-`JULEP_PURE_NATIVE_DEPS` grant naming the pure. Compromising any one alone is
-not sufficient — e.g. a stolen admin key cannot forge the operator signature,
-and a leaked signing key cannot grant itself the worker-side native tier.
-A realistic attack scenario is compromise of a release/signing pipeline that
-holds both publication and signing capability, on a worker already granting
-the pure native tier. Deployments that issue admin keys to tenants or expose
-the signing key collapse this toward `PR:L` (8.8).
+**RT-01 — production finding, High 7.2 (proposed).**
+`AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`. Exploitation must satisfy **four
+distinct controls**: (1) ability to introduce a valid signed bundle through
+the deployment's publication pipeline (CLI `deploy`/`application` commands —
+the control plane never signs), (2) an Ed25519 signature from a
+worker-allowlisted operator key, (3) a worker-side `JULEP_PURE_NATIVE_DEPS`
+grant naming the pure, and (4) admin release/deployment authorization where
+the deployment path requires it (`POST /releases`, `POST /deployments` are
+`require_admin`). Compromising any one alone is not sufficient. Deployment
+variants that delegate signing to tenants or expose admin keys argue `PR:L`
+(8.8).
 
 **RT-02 / RT-03 — remediation bypasses, not independent vulnerabilities.** The
 hardening proposed in upstream issue #1632 (tier-aware import denylist +
@@ -48,6 +48,7 @@ Public reference: [GHSA-rhfp-jw6w-wrqq](https://github.com/julep-ai/julep/securi
 - [`report-hardening-verification.md`](report-hardening-verification.md) — verification/addendum: proposed hardening variants A/B1/B2, bypass payloads, patch diffs, 14-assertion run matrix (`poc/hardening/`, `evidence/hardening/`)
 - [`evidence/authz/authorization_analysis.md`](evidence/authz/authorization_analysis.md) — supporting appendix: route authz inventory, authentication decisions, signature verification, native-grant binding
 - [`evidence/authz/attacker_model.md`](evidence/authz/attacker_model.md) — complete enumeration of pure-source entry paths and attacker prerequisites
+- [`evidence/authz/security_contract.md`](evidence/authz/security_contract.md) — vendor-documented trust boundary, signature semantics, and the capability-overreach argument
 
 ## Affected
 
@@ -94,27 +95,43 @@ mutating admin routes. A full path enumeration
 ([`evidence/authz/attacker_model.md`](evidence/authz/attacker_model.md)) found
 **no route for an unauthenticated or client-role attacker** to introduce
 executable source onto a `native_venv` worker — every path terminates at an
-admin API call plus an operator-held signing key, or operator env vars.
-Exploitation therefore requires all three controls at once: admin publication
-rights, an allowlisted operator signature over a manifest whose
-`executorTier:"native"` claim is inside the signed bytes, and a worker-side
-`JULEP_PURE_NATIVE_DEPS` grant. This is why RT-01 is scored `PR:H` (7.2), not
-`PR:L` (8.8). The finding is a sandbox-boundary failure: the native tier's
-documented purpose is dependency installation, but it grants unrestricted
-host `exec()` to any authorized bundle. Remaining deployment-specific
-unknowns: whether a given deployment delegates admin keys or bundle signing
-to tenants.
+operator-held signing key, the publication pipeline, or operator env vars.
+The vendor's own docs (`docs-site/.../deploy/wasm-tier.md`) define
+`JULEP_PURE_NATIVE_DEPS` as "the operator trust boundary … trusting that
+bundle's source to run as native code" — so the defensible claim is not
+"untrusted code execution" but a **capability overreach**: the grant is
+documented for *declared dependency installation*, yet the tier runs the
+bundle's entire source with unrestricted host imports because
+`_validate_portable_source` applies the wasm guest's stdlib allowlist
+(`os`, `subprocess`, `socket`, `ctypes` are all permitted — they are neutered
+stubs in wasm but fully capable on the host). Full contract analysis:
+[`evidence/authz/security_contract.md`](evidence/authz/security_contract.md).
+This is why RT-01 is scored `PR:H` (7.2, proposed), not `PR:L` (8.8); delegated
+signing or pipeline compromise argues 8.8.
 
 ## Recommendation
 
-Do not rely on import denylists or in-process `__builtins__` restriction as the
-boundary for `native_venv`. Execute native pures in a real sandbox: container /
-namespace isolation, seccomp, non-root UID, read-only rootfs, no host
-environment or mounts, egress allowlist. If in-process checks are retained as
-defence-in-depth, combine tier-aware denylist + all-dunder AST ban +
-restricted builtins, and add the payloads in `poc/hardening/payloads/` as
-regression tests. Treat the native grant as a signed per-bundle capability,
-not a name-only worker allowlist.
+Two architectures, per `security_contract.md` §5:
+
+- **A — trusted native execution (documented intent):** keep the tier for
+  operator-published bundles; fix `_validate_portable_source` to use a
+  *native-tier* allowlist so the granted capability (declared deps) matches
+  the implemented one; dedicated worker identity, no host secrets, egress
+  allowlist.
+- **B — untrusted/third-party bundles:** real OS isolation — container /
+  namespace, seccomp, non-root UID, read-only rootfs, no host env, explicit
+  egress policy, resource limits. Python in-process restrictions are not a
+  boundary (RT-02/RT-03 bypasses; RT-04 compatibility break).
+
+## Evidence hygiene
+
+All secrets and environment values in `evidence/` are **synthetic test
+values** (`sk-live-poc-secret-…`, `sk-live-hardening-secret-…`, Ed25519 seeds
+`0x42…`/`0x77…`, `local-dev` keys) generated for the lab; no real credentials
+are present. Host-identifying details (hostname, uid, kernel) are retained
+because they are part of the proof that execution escaped the sandbox; the
+repository is private and the raw engagement artifacts remain the hashed
+source of truth.
 
 ## Integrity
 
