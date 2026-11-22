@@ -129,6 +129,12 @@ Two gaps in the first pass were closed:
    `JULEP_PURE_NATIVE_DEPS`); unsigned, tampered-manifest, empty/wrong grant,
    and non-allowlisted-signer variants are all rejected. Result: 7/7 — see
    `native_grant_binding.stdout`.
+3. **Grant scoping across workers.** `native_grant_scoping.py` shows the grant
+   binds a pure *name*, not content: two fresh workers accept different
+   validly-signed bundles under the same granted name; a warm worker pins
+   name→source_hash and rejects the second bundle; unsigned content is still
+   rejected. Result: 4/4 — see `native_grant_scoping.stdout` and
+   `security_contract.md` §3.
 
 Structural consequence: `executorTier` is inside the signed manifest bytes —
 the tier claim cannot be modified without invalidating the Ed25519 signature.

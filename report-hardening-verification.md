@@ -16,11 +16,11 @@
 
 ### 1.1 Background
 
-RT-01 proved that the `native_venv` tier accepts bundle source containing `import os` / `import subprocess` and executes it with `exec(source, {"pure": pure})` in a real host subprocess. The published remediation guidance (issue #1632) proposes a tier-aware import denylist plus a ban on selected reflection names/attributes. This engagement verifies whether that hardening actually neutralises the escape.
+RT-01 proved that the `native_venv` tier accepts bundle source containing `import os` / `import subprocess` and executes it with `exec(source, {"pure": pure})` in a real host subprocess. This engagement evaluates three **researcher-proposed** candidate mitigations — Variant A (tier-aware import denylist + reflection ban), Variant B1 (restricted `__builtins__` in the driver), and Variant B2 (layered combination) — tracked in `julep-ai/julep#1632`, which is a researcher-filed proposal, **not** vendor-approved or deployed remediation. The variants are tested against the original `fc74d079` implementation.
 
 ### 1.2 Overall Posture
 
-The original escape still reproduces unchanged (RT-01 re-verified). Both proposed hardening strategies fail:
+The original escape still reproduces unchanged (RT-01 re-verified). All three researcher-proposed mitigation variants fail:
 
 - **Tier-aware import denylist + reflection ban (Variant A):** blocks literal `import os`, but is bypassed by `operator.attrgetter("__globals__")(pure)["__builtins__"]` followed by `__import__`. The denylist inspects AST `Name`/`Attribute` nodes; the bypass uses only string literals and an allowed stdlib module. Host RCE and exfiltration succeed.
 - **Restricted `__builtins__` in the driver (Variant B1):** removes `__import__`, but the Python object model remains. `().__class__.__base__.__subclasses__()` reaches a class whose `__init__.__globals__` contains `sys`; `sys.modules["os"]` then yields `os.popen` and exfiltration. Host RCE succeeds.
@@ -37,7 +37,7 @@ The original escape still reproduces unchanged (RT-01 re-verified). Both propose
 | Low | 0 |
 | Informational | 1 (RT-04) |
 
-RT-01 remains **High 7.2** (`AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`, rescored after the authorization analysis — see `evidence/authz/authorization_analysis.md`) and re-verified. A deployment that applies only the issue #1632 patch, or only restricted builtins, remains exploitable at the same severity as RT-01.
+RT-01 remains **High 7.2 (proposed)** (`AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`, rescored after the authorization analysis — see `evidence/authz/authorization_analysis.md`; `AV:L` alternative = 6.7 Medium if publication is treated as a local privileged operation) and re-verified. A deployment that applies only the researcher-proposed Variant A patch, or only restricted builtins, remains exploitable at the same severity as RT-01.
 
 ### 1.4 Recommendation Summary
 
@@ -95,7 +95,7 @@ A second control using the harness against the unmodified tree (`original_direct
 
 ### RT-02 — Tier-aware import denylist plus reflection ban bypassable via `operator.attrgetter` and `pure.__globals__`
 
-- **Severity:** Remediation bypass (not an independent production vulnerability — the bypass targets the *proposed* issue #1632 hardening, which is not deployed upstream; inherits RT-01's attacker prerequisites)
+- **Severity:** Remediation bypass (not an independent production vulnerability — the bypass targets researcher-proposed mitigation variants that are not deployed upstream; inherits RT-01's attacker prerequisites)
 - **CVSS 3.1:** n/a (inherits RT-01: 7.2 `AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`)
 - **CWE:** CWE-184 (Incomplete List of Disallowed Inputs); CWE-94 (Code Injection)
 - **Affected URL/Area:** `julep/registry.py::_validate_portable_source` (hardened Variant A)
@@ -204,11 +204,11 @@ A second Variant A bypass (`evidence/hardening/A_denylist_bypass.log`, proof sha
 
 #### Impact
 
-Same blast radius as RT-01: arbitrary command execution as the worker OS user, host file read/write, environment-secret harvesting, process spawn, and outbound network access. A deployment that applies only the issue #1632 denylist/reflection patch remains exploitable.
+Same blast radius as RT-01: arbitrary command execution as the worker OS user, host file read/write, environment-secret harvesting, process spawn, and outbound network access. A deployment that applies only the researcher-proposed Variant A denylist/reflection patch remains exploitable.
 
 #### Affected Demographic
 
-Self-hosted Julep `3.0.0rc6` / commit `fc74d07` with the native tier enabled and a pure granted via `JULEP_PURE_NATIVE_DEPS`, where the proposed denylist hardening (or equivalent) has been applied without an OS sandbox.
+Self-hosted Julep `3.0.0rc6` / commit `fc74d07` with the native tier enabled and a pure granted via `JULEP_PURE_NATIVE_DEPS`, where the researcher-proposed denylist hardening (or equivalent) has been applied without an OS sandbox.
 
 #### Recommended Fix
 

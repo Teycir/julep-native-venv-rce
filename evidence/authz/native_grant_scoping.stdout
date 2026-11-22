@@ -1,0 +1,12 @@
+PASS  1. worker A accepts bundle X under granted name                   registered=['acme.geo.v1']
+PASS  2. fresh worker B accepts bundle Y (same name, diff content)      registered=['acme.geo.v1']
+PASS  3. warm worker A rejects bundle Y (hash pin)                      pure 'acme.geo.v1' is already baked with hash pure:70945befb4527bc9, but bundle fb3954cacca9f182cf93ffb46fbe74b4819aa12aaae6a1de6557cf969ee3d5c8 provides pure:ecc8f11263c36770. Likely cause: a stale worker image (baked code is behind the bundle) or a stale bundle (published before the pure changed). Rebuild/redeploy the image, or republish.
+PASS  4. unsigned bundle Z rejected despite grant                       bundle is unsigned: no signature reference provided
+
+Structural result: the native grant binds a pure NAME, not a source
+hash or signer. Fresh workers accept any allowlisted-signer bundle
+claiming the granted name; warm workers pin name->hash per process.
+A fleet with mixed worker ages can run different code for the same
+granted pure name until every worker has resolved the same bundle.
+
+RESULT: PASS (4/4 assertions)

@@ -30,7 +30,7 @@ Julep ships bundle-sourced “pures” through two execution tiers: `wasm` (sand
 Overall: **High (CVSS 3.1 7.2)** — exploitation requires an admin-level API key (bundle publication routes are `require_admin`) and/or an allowlisted operator signing key plus a worker `JULEP_PURE_NATIVE_DEPS` grant; absent those, an attacker cannot introduce an executable bundle.
 
 ### 1.4 Recommendation Summary
-1. Apply the tier-aware denylist and reflection ban described in issue #1632.
+1. Apply the researcher-proposed tier-aware denylist and reflection ban (issue #1632 is a researcher-filed proposal, not vendor-deployed remediation).
 2. Restrict `__builtins__` inside the `native_venv` driver’s `exec()` (class-level fix, not just an enumeration).
 3. Run native pures in a real sandbox (container, seccomp, namespaces, read-only FS, no host env, egress allowlist).
 4. Treat `JULEP_PURE_NATIVE_DEPS` as a privileged, per-bundle capability, not a name-only allowlist.
@@ -53,7 +53,7 @@ Overall: **High (CVSS 3.1 7.2)** — exploitation requires an admin-level API ke
 
 - **Severity:** High
 - **CVSS 3.1:** 7.2 — `AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` — https://www.first.org/cvss/calculator/3.1#CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H
-- **Scoring note (2026-11-22 revision):** the original 8.8 (`PR:L`) predated the authorization analysis. `evidence/authz/authorization_analysis.md` demonstrates that bundle publication is an operator pipeline operation (the control plane never signs; `POST /releases`/`POST /deployments` are `require_admin`), native execution additionally requires an allowlisted Ed25519 signer plus a worker-side `JULEP_PURE_NATIVE_DEPS` grant — i.e. high privileges (`PR:H`, proposed 7.2). Deployments that delegate signing to tenants, hand admin keys to tenants, or expose the operator signing key collapse this to `PR:L` (8.8) or worse. The vendor documents the grant as "trusting that bundle's source to run as native code" (`docs-site/.../deploy/wasm-tier.md`); the defensible claim is therefore **capability overreach** — the grant is for declared dependency installation, but `_validate_portable_source` applies the wasm guest's stdlib allowlist, so `os`/`subprocess`/`socket`/`ctypes` pass on the host tier. See `evidence/authz/security_contract.md`.
+- **Scoring note (2026-11-22 revision):** the original 8.8 (`PR:L`) predated the authorization analysis. `evidence/authz/authorization_analysis.md` demonstrates that bundle publication is an operator pipeline operation (the control plane never signs; `POST /releases`/`POST /deployments` are `require_admin`), native execution additionally requires an allowlisted Ed25519 signer plus a worker-side `JULEP_PURE_NATIVE_DEPS` grant — i.e. high privileges (`PR:H`, proposed 7.2). Deployments that delegate signing to tenants, hand admin keys to tenants, or expose the operator signing key collapse this to `PR:L` (8.8) or worse; if the vendor treats publication as a *local* privileged operation, `AV:L/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` = 6.7 (Medium). `AV:N` is retained because the trigger is a network-delivered workflow run, but bundle introduction is operator-side — flagged as the weakest metric. The vendor documents the grant as "trusting that bundle's source to run as native code" (`docs-site/.../deploy/wasm-tier.md`); the defensible claim is therefore **capability overreach** — the grant is for declared dependency installation, but `_validate_portable_source` applies the wasm guest's stdlib allowlist, so `os`/`subprocess`/`socket`/`ctypes` pass on the host tier. See `evidence/authz/security_contract.md`.
 - **CWE:** CWE-94 (Improper Control of Generation of Code / Code Injection); related CWE-184 (Incomplete List of Disallowed Inputs)
 - **Affected URL/Area:** `julep/registry.py::_validate_portable_source` (line 150), `julep/registry.py::register_pure_from_source` (line 407), `julep/execution/native_venv_executor.py::_DRIVER` (line 25) and `exec()` (line 39), `julep/worker_store.py::_manifest_pures` (line 109) and `resolve_and_register` native grant check (line 338)
 - **Difficulty to exploit:** Low
@@ -211,7 +211,7 @@ Self-hosted Julep `3.0.0rc6` (commit `fc74d07`) and nearby commits where `_valid
 
 #### Recommended Fix
 
-- Apply the fix from issue #1632: add a `tier` parameter to `_validate_portable_source`; for `native_venv`, reject `os`, `subprocess`, `ctypes`, `socket`, `importlib`, `multiprocessing`, `signal`, `mmap`, `resource`, `pty`, `fcntl`, `posix`, `nt`, `msvcrt`, `winreg`, `_posixsubprocess`, `sys`, `builtins`.
+- Apply the researcher-proposed fix tracked in issue #1632 (researcher-filed, not vendor-deployed): add a `tier` parameter to `_validate_portable_source`; for `native_venv`, reject `os`, `subprocess`, `ctypes`, `socket`, `importlib`, `multiprocessing`, `signal`, `mmap`, `resource`, `pty`, `fcntl`, `posix`, `nt`, `msvcrt`, `winreg`, `_posixsubprocess`, `sys`, `builtins`.
 - For both tiers, reject bare uses of `__import__`, `eval`, `exec`, `compile`, `globals`, `vars` and attribute access to `__builtins__`, `__globals__`, `__subclasses__`, `__loader__`, `__spec__`.
 - Stronger: do not rely on an import denylist. Pass a restricted `__builtins__` mapping to the driver’s `exec()` and expose only `pure`; this closes the reflection class rather than enumerating members.
 - Defense-in-depth: run native pures in a container/namespace with seccomp, read-only rootfs, no host env, non-root UID, and an egress allowlist. Make `JULEP_PURE_NATIVE_DEPS` a per-bundle signed capability, not a name-only allowlist.
@@ -263,7 +263,7 @@ d62cebc90b3f5bd89de2e5ff2a642e01324c5acecc36faa74f847f827f482ee6  poc/rt01/liste
 
 **Correction note:** the RT-01 recommendation that a restricted `__builtins__` mapping “closes the reflection class” is not sufficient as a standalone control. Verification report: `report-hardening-verification.md`.
 
-- The issue #1632 tier-aware import denylist + reflection ban is bypassable via `operator.attrgetter` and `pure.__globals__` (RT-02 — remediation bypass, not an independent production vulnerability; inherits RT-01's prerequisites).
+- The researcher-proposed issue #1632 tier-aware import denylist + reflection ban is bypassable via `operator.attrgetter` and `pure.__globals__` (RT-02 — remediation bypass, not an independent production vulnerability; inherits RT-01's prerequisites).
 - Restricted `__builtins__` alone is bypassable via `().__class__.__base__.__subclasses__()` → `sys.modules["os"]` (RT-03 — remediation bypass, same classification).
 - A layered in-process control blocks the tested payloads but breaks legitimate native dependency imports (RT-04, Informational).
 

@@ -19,11 +19,16 @@ grant naming the pure, and (4) admin release/deployment authorization where
 the deployment path requires it (`POST /releases`, `POST /deployments` are
 `require_admin`). Compromising any one alone is not sufficient. Deployment
 variants that delegate signing to tenants or expose admin keys argue `PR:L`
-(8.8).
+(8.8); if publication is treated as a *local* privileged operation,
+`AV:L/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` = 6.7 (Medium) — `AV:N` is retained
+because the trigger is a network-delivered workflow run, but bundle
+introduction is operator-side (see `security_contract.md` §6).
 
-**RT-02 / RT-03 — remediation bypasses, not independent vulnerabilities.** The
-hardening proposed in upstream issue #1632 (tier-aware import denylist +
-reflection bans, restricted `__builtins__`) is bypassable via
+**RT-02 / RT-03 — remediation bypasses, not independent vulnerabilities.**
+Researcher-proposed hardening variants (Variant A: tier-aware import
+denylist + reflection bans; Variant B1: restricted `__builtins__`; Variant B2:
+layered combination — tracked in `julep-ai/julep#1632`, a researcher-filed
+proposal, **not** vendor-deployed remediation) are bypassable via
 `operator.attrgetter("__globals__")(pure)["__builtins__"]` and
 `().__class__.__base__.__subclasses__()` → `sys.modules["os"]`. These target a
 *proposed* fix, not deployed code; they inherit RT-01's prerequisites.
@@ -45,7 +50,7 @@ Public reference: [GHSA-rhfp-jw6w-wrqq](https://github.com/julep-ai/julep/securi
 ## Reports
 
 - [`report-rt01.md`](report-rt01.md) — original finding: `native_venv` escape, verified with live exfiltration (`poc/rt01/`, `evidence/rt01/`)
-- [`report-hardening-verification.md`](report-hardening-verification.md) — verification/addendum: proposed hardening variants A/B1/B2, bypass payloads, patch diffs, 14-assertion run matrix (`poc/hardening/`, `evidence/hardening/`)
+- [`report-hardening-verification.md`](report-hardening-verification.md) — verification/addendum: researcher-proposed hardening variants A/B1/B2, bypass payloads, patch diffs, 14-assertion run matrix (`poc/hardening/`, `evidence/hardening/`)
 - [`evidence/authz/authorization_analysis.md`](evidence/authz/authorization_analysis.md) — supporting appendix: route authz inventory, authentication decisions, signature verification, native-grant binding
 - [`evidence/authz/attacker_model.md`](evidence/authz/attacker_model.md) — complete enumeration of pure-source entry paths and attacker prerequisites
 - [`evidence/authz/security_contract.md`](evidence/authz/security_contract.md) — vendor-documented trust boundary, signature semantics, and the capability-overreach argument
@@ -96,16 +101,23 @@ mutating admin routes. A full path enumeration
 **no route for an unauthenticated or client-role attacker** to introduce
 executable source onto a `native_venv` worker — every path terminates at an
 operator-held signing key, the publication pipeline, or operator env vars.
-The vendor's own docs (`docs-site/.../deploy/wasm-tier.md`) define
-`JULEP_PURE_NATIVE_DEPS` as "the operator trust boundary … trusting that
-bundle's source to run as native code" — so the defensible claim is not
-"untrusted code execution" but a **capability overreach**: the grant is
-documented for *declared dependency installation*, yet the tier runs the
-bundle's entire source with unrestricted host imports because
-`_validate_portable_source` applies the wasm guest's stdlib allowlist
-(`os`, `subprocess`, `socket`, `ctypes` are all permitted — they are neutered
-stubs in wasm but fully capable on the host). Full contract analysis:
+The registration API's own contract — `register_pure_from_source`'s docstring:
+bundle source is "the body of an **untrusted (if signed) pure: it must run
+fail-closed through its selected tier**" — is the decisive text. The
+docstring promises fail-closed validation for *every* tier; the tier docs
+promise the grant means "trusting that bundle's source to run as native
+code." Both hold only if the validator actually restricts native-tier source —
+and it does not: `_validate_portable_source` applies the wasm guest's stdlib
+allowlist (`os`, `subprocess`, `socket`, `ctypes` are all permitted — they are
+neutered stubs in wasm but fully capable on the host). The defensible claim is
+a **fail-closed validation gap**: granted capability (declared deps) exceeds
+implemented capability (arbitrary host exec). Full analysis:
 [`evidence/authz/security_contract.md`](evidence/authz/security_contract.md).
+Corroborating scoping test
+([`poc/authz/native_grant_scoping.py`](poc/authz/native_grant_scoping.py),
+4/4 PASS): the grant binds a pure *name*, not content — fresh workers accept
+different signed bundles under the same granted name while warm workers pin
+name→hash.
 This is why RT-01 is scored `PR:H` (7.2, proposed), not `PR:L` (8.8); delegated
 signing or pipeline compromise argues 8.8.
 
