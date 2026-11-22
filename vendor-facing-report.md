@@ -1,6 +1,6 @@
 # Vendor-facing summary — Julep `native_venv` bundle execution
 
-**Date (UTC):** 2026-11-22T17:31:57Z
+**Date (UTC):** 2026-11-22T17:43:20Z
 **Target:** `julep-ai/julep` `3.0.0rc6` @ `fc74d079a18c8124b2627ca4717f5a9c269267db`  
 **Public issue:** [`julep-ai/julep#1632`](https://github.com/julep-ai/julep/issues/1632) (open). The issue cites `GHSA-rhfp-jw6w-wrqq`; that advisory URL currently returns 404, so the GHSA is treated as cited-but-unverified.
 
@@ -17,6 +17,8 @@ Confirmed in the pinned source tree and local lab:
    - a warm worker pins `name -> source_hash` only within its process;
    - a fresh replacement worker accepts and executes the alternate bundle;
    - unsigned bundles and non-allowlisted signers are still rejected.
+
+This grant-scoping result is a supporting deployment-consistency observation, not a second RCE, signature bypass, grant bypass, or unauthorized-access finding.
 
 Not established:
 
@@ -43,15 +45,15 @@ If the fail-closed reading is intended, the current implementation has a validat
 
 ## Severity posture
 
-Proposed, deployment-dependent:
+Proposed, deployment-dependent — these are conditional scoring hypotheses, not confirmed CVSS assessments; the vendor should validate the vector for the actual deployment and attacker path.
 
-| Assumption | Vector | Score |
+| Assumption / attacker path | Vector | Score |
 |---|---|---|
 | Default operator-controlled publication/signing/grant; network-triggered workflow | `AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` | 7.2 High (proposed upper bound) |
-| Delegated signing, tenant-held admin keys, or pipeline compromise | `AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H` | 8.8 High |
+| Delegated signing, tenant-held admin keys, or publication-pipeline compromise gives the attacker an allowlisted signature path | `AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H` | 8.8 High |
 | Bundle introduction treated as local privileged operation | `AV:L/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` | 6.7 Medium |
 
-`AV:N` is the weakest metric because bundle introduction is operator-side while the demonstrated trigger is a network-delivered workflow run.
+`AV:N` is the weakest metric because bundle introduction is operator-side while the demonstrated trigger is a network-delivered workflow run. The 8.8 case applies only if delegated signing or pipeline compromise actually gives an attacker a worker-allowlisted signature path; it is not established for the default configuration.
 
 ## Requested actions
 

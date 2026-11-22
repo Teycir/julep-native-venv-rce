@@ -191,4 +191,7 @@ default supported configuration. Alternatives:
 `AV:N` remains the weakest metric: the demonstrated trigger is a
 network-delivered workflow run invoking the registered pure, while bundle
 introduction is operator-side. We retain 7.2 only as a proposed score pending
-the vendor's deployment model and contract clarification.
+the vendor's deployment model and contract clarification. All scores are
+conditional hypotheses: 8.8 applies only if delegated signing or pipeline
+compromise gives an attacker a worker-allowlisted signature path, and the
+vendor should select the vector for the actual deployment.

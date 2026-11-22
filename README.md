@@ -1,5 +1,7 @@
 # Julep Native Execution Security Assessment — Host RCE, Trust Boundaries and Python Hardening
 
+Start with [`vendor-facing-report.md`](vendor-facing-report.md) for vendor triage; the remainder of this repository is the supporting technical evidence archive.
+
 Coordinated vulnerability disclosure for `julep-ai/julep`.
 
 ## Executive summary
@@ -77,6 +79,7 @@ SHA256 manifests, timestamps, patch diffs, runnable exploit scripts).
 | 2026-11-22 | Authorization analysis: route inventory, auth decisions, signature chain, native-grant binding |
 | 2026-11-22 | Contract/grant-scoping revision: process-level signer test, GHSA status corrected, vendor summary added |
 | 2026-11-22 | Final revision: process-level grant-scoping test now invokes the registered pure; titles normalized |
+| 2026-11-22 | Reporting revision: status/CVSS conditionality/grant-scoping impact clarified |
 | pending | Vendor disclosure / CVE assignment |
 
 ## Authorization analysis — attacker prerequisites
@@ -126,9 +129,12 @@ and one shared artifact store show the grant binds a pure *name*, not content
 `variant: X` / `variant: Y` results under the same granted name; a warm
 worker pins name→hash only within its process, a fresh worker executes the
 alternate signed bundle, and a non-allowlisted signer is still rejected.
+This is a supporting deployment-consistency observation, not a second RCE or
+an unauthorized-access finding.
 This is why RT-01 is scored `PR:H` (7.2 proposed upper bound), not `PR:L`
 (8.8); delegated signing or pipeline compromise argues 8.8, and the
-conservative `AV:L` reading is 6.7 Medium.
+conservative `AV:L` reading is 6.7 Medium. All numeric scores are conditional
+hypotheses pending vendor validation of the deployment-specific attack path.
 
 ## Recommendation
 

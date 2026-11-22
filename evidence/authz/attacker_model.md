@@ -68,7 +68,8 @@ fresh processes therefore execute different signed bundles under that name,
 a warm process pins `name → source_hash` locally, and a fresh replacement
 process executes the second bundle. Unsigned content and a signer outside the
 worker allowlist are still rejected. The pin is therefore process-local rather
-than a durable fleet-wide binding.
+than a durable fleet-wide binding. This remains a supporting deployment-
+consistency observation, not a second RCE or unauthorized-access finding.
 
 ## 5. Verdict
 
@@ -104,9 +105,10 @@ unauthenticated RCE:
 
 **Honest severity statement:** in the default supported configuration,
 exploitation requires operator-level publication capability (`PR:H`, CVSS
-7.2 proposed upper bound; conservative `AV:L` reading 6.7 Medium). The
-finding's value is that the tier boundary is broken or dangerously broad by
-design — pending the vendor's contract clarification — and the recommendation
-stands: execute native pures under real OS isolation
+7.2 proposed upper bound; conservative `AV:L` reading 6.7 Medium). All CVSS
+values are conditional proposals pending vendor validation of the deployment
+model. The finding's value is that the tier boundary is broken or dangerously
+broad by design — pending the vendor's contract clarification — and the
+recommendation stands: execute native pures under real OS isolation
 (container/namespace/seccomp/non-root/ro-fs/egress allowlist) rather than
 in-process Python restrictions.

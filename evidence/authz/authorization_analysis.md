@@ -114,8 +114,9 @@ operator-level publication/signing capability plus the worker grant. If a
 deployment delegates signing to tenants, hands admin keys to tenants, or
 exposes the signing key, RT-01 escalates toward `PR:L` (8.8); if publication
 is treated as local privileged operations, the conservative `AV:L` reading is
-6.7 Medium. The native-tier contract question is analyzed separately in
-`security_contract.md`.
+6.7 Medium. All scores are conditional hypotheses pending vendor validation of
+the deployment-specific attacker path. The native-tier contract question is
+analyzed separately in `security_contract.md`.
 
 ## Addendum (2026-11-22, second pass)
 

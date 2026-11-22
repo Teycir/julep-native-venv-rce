@@ -8,7 +8,7 @@
 | Engagement dir | repository root (all paths below are relative to it) |
 | Generated (UTC) | 2026-11-22T10:09:30Z |
 | Scope | Local authorised lab: clone at `fc74d079a18c8124b2627ca4717f5a9c269267db`, package `3.0.0rc6` |
-| Status | **FINAL — verified with live exfiltration** |
+| Status | **Verification complete — PoC verified in authorized local environment; vulnerability classification pending vendor clarification** |
 | Relation to prior work | Verification/addendum to `julep/20261121/214637` (RT-01, High 7.2) |
 | Public reference | `julep-ai/julep#1632` (open). Issue cites `GHSA-rhfp-jw6w-wrqq`, but that advisory URL currently returns 404 — cited-but-unverified |
 
@@ -37,7 +37,7 @@ The original escape still reproduces unchanged (RT-01 re-verified). All three re
 | Low | 0 |
 | Informational | 1 (RT-04) |
 
-RT-01 remains **High 7.2 (proposed upper bound)** (`AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`, rescored after the authorization analysis — see `evidence/authz/authorization_analysis.md`; `AV:L` alternative = 6.7 Medium if publication is treated as a local privileged operation) and re-verified. A deployment that applies only the researcher-proposed Variant A patch, or only restricted builtins, remains exploitable at the same severity as RT-01.
+RT-01 remains **High 7.2 (proposed upper bound)** (`AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`, rescored after the authorization analysis — see `evidence/authz/authorization_analysis.md`; `AV:L` alternative = 6.7 Medium if publication is treated as a local privileged operation) and re-verified. All CVSS values are conditional hypotheses pending vendor validation of the deployment-specific attacker path. A deployment that applies only the researcher-proposed Variant A patch, or only restricted builtins, remains exploitable at the same severity as RT-01.
 
 ### 1.4 Recommendation Summary
 
