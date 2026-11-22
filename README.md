@@ -80,7 +80,8 @@ SHA256 manifests, timestamps, patch diffs, runnable exploit scripts).
 | 2026-11-22 | Contract/grant-scoping revision: process-level signer test, GHSA status corrected, vendor summary added |
 | 2026-11-22 | Final revision: process-level grant-scoping test now invokes the registered pure; titles normalized |
 | 2026-11-22 | Reporting revision: status/CVSS conditionality/grant-scoping impact clarified |
-| pending | Vendor disclosure / CVE assignment |
+| 2026-11-22T17:54:26Z | Disclosure email sent to `developers@julep.ai` (cc `diwank@julep.ai`) with `julep-native-venv-rce.zip` evidence package |
+| pending | Vendor response / triage / CVE assignment |
 
 ## Authorization analysis — attacker prerequisites
 
