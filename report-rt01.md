@@ -1,4 +1,4 @@
-# Julep 3.0.0rc6 — native_venv Bundle Tier Sandbox Escape to Host RCE
+# Julep 3.0.0rc6 — native_venv Host Code Execution and Trust-Boundary Assessment
 
 ## Report metadata
 
@@ -214,7 +214,7 @@ Self-hosted Julep `3.0.0rc6` (commit `fc74d07`) and nearby commits where `_valid
 - First clarify the contract: does `JULEP_PURE_NATIVE_DEPS` authorize exact signed source for host execution, or only dependency installation under tier-appropriate validation?
 - If the native tier must remain fail-closed, add tier-aware source validation. The researcher-proposed issue #1632 denylist is a starting point, not a boundary: it is bypassable via `operator.attrgetter`/`__globals__` (RT-02), and restricted `__builtins__` alone is bypassable via object-subclass traversal (RT-03).
 - Stronger: do not rely on in-process Python restrictions. Pass no ambient host capabilities into the driver and run native pures in a container/namespace with seccomp, read-only rootfs, no host env, non-root UID, and an egress allowlist.
-- Defense-in-depth: make `JULEP_PURE_NATIVE_DEPS` a per-bundle signed capability or bind it to `(name, sourceHash)`; the process-level scoping test shows the current name-only grant accepts different signed content on fresh workers.
+- Defense-in-depth: make `JULEP_PURE_NATIVE_DEPS` a per-bundle signed capability or bind it to `(name, sourceHash)`; the process-level scoping test shows the current name-only grant accepts and executes different signed content on fresh workers.
 
 #### References
 

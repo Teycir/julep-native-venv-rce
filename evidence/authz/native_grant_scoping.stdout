@@ -1,16 +1,17 @@
-PASS  1. OS worker A accepts signer-A bundle X                              registered=pure:def46719a1e53482
-PASS  2. OS worker B accepts signer-B bundle Y (same granted name)          registered=pure:c1cff4dddab73009
-PASS  3. warm worker A rejects bundle Y (hash pin)                          BundleResolutionError: pure 'acme.geo.v1' is already baked with hash pure:def46719a1e53482, but bundle b6e98897c9aeca58a202fc0e1592d40b0f3ed83bb8db980af6fa421640810695 provides pure:c1cff4dddab73009. Likely cause: a stale worker image (baked code is behind the bundle) or a stale bundle (published before the pure changed). Rebuild/redeploy the image, or republish.
+PASS  1. OS worker A accepts+invokes signer-A bundle X                      registered=pure:b8d35235a88e9eb5; invocation={'value': 'probe', 'variant': 'X'}
+PASS  2. OS worker B accepts+invokes signer-B bundle Y (same granted name)  registered=pure:fe41aa003ac58267; invocation={'value': 'probe', 'variant': 'Y'}
+PASS  3. warm worker A rejects bundle Y (hash pin)                          BundleResolutionError: pure 'acme.geo.v1' is already baked with hash pure:b8d35235a88e9eb5, but bundle b12f5569eae343c4c02ca49d6ba46dd8fd75294dbadecacb5e51c1b3c9fe5b4f provides pure:fe41aa003ac58267. Likely cause: a stale worker image (baked code is behind the bundle) or a stale bundle (published before the pure changed). Rebuild/redeploy the image, or republish.
 PASS  4. worker B rejects unsigned bundle Z                                 BundleResolutionError: bundle is unsigned: no signature reference provided
-PASS  5. fresh replacement worker C accepts bundle Y                        registered=pure:c1cff4dddab73009
+PASS  5. fresh replacement worker C accepts+invokes bundle Y                registered=pure:fe41aa003ac58267; invocation={'value': 'probe', 'variant': 'Y'}
 PASS  6. worker D rejects signer-B bundle (allowlist only has A)            BundleResolutionError: bundle signer is not in the allowlist: c853ad0f0cd2b619aea92ceec4fd56a24d6499d584ce79257e45cfd8139b60a7
-PASS  7. resolutions ran in distinct OS worker processes                    pids=[60616, 60617, 60618, 60619]
+PASS  7. resolution+invocation ran in distinct OS worker processes          pids=[65891, 65893, 65895, 65897]
 
 Structural result: the native grant binds a pure NAME across distinct
 worker processes and across distinct allowlisted signers; it does not
 bind source content. A warm process pins name->source_hash, but that
-pin is process-local: a fresh/replacement worker accepts whichever
-allowlisted-signer bundle its deployment resolves for the granted name.
-The signer allowlist and signature checks remain enforced independently.
+pin is process-local: a fresh/replacement worker accepts and executes
+whichever allowlisted-signer bundle its deployment resolves for the
+granted name. The signer allowlist and signature checks remain enforced
+independently.
 
 RESULT: PASS (7/7 assertions)

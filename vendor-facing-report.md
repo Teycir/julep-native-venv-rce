@@ -1,6 +1,6 @@
 # Vendor-facing summary — Julep `native_venv` bundle execution
 
-**Date (UTC):** 2026-11-22T17:16:56Z  
+**Date (UTC):** 2026-11-22T17:31:57Z
 **Target:** `julep-ai/julep` `3.0.0rc6` @ `fc74d079a18c8124b2627ca4717f5a9c269267db`  
 **Public issue:** [`julep-ai/julep#1632`](https://github.com/julep-ai/julep/issues/1632) (open). The issue cites `GHSA-rhfp-jw6w-wrqq`; that advisory URL currently returns 404, so the GHSA is treated as cited-but-unverified.
 
@@ -13,9 +13,9 @@ Confirmed in the pinned source tree and local lab:
 3. Bundle signatures are detached provenance/integrity checks; `executorTier` is inside signed manifest bytes.
 4. The worker-side `JULEP_PURE_NATIVE_DEPS` grant is operator configuration and authorizes pure **names**, not source hashes.
 5. A process-level test using four distinct OS worker processes, two allowlisted signers, and one shared artifact store shows:
-   - fresh workers accept different signed bundles under the same granted name;
+   - accepted workers resolve **and invoke** different signed bundles under the same granted name, returning distinct `variant: X` / `variant: Y` results;
    - a warm worker pins `name -> source_hash` only within its process;
-   - a fresh replacement worker accepts the alternate bundle;
+   - a fresh replacement worker accepts and executes the alternate bundle;
    - unsigned bundles and non-allowlisted signers are still rejected.
 
 Not established:

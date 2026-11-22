@@ -1,4 +1,4 @@
-# Julep `native_venv` — Sandbox Escape via Python Object Model (Import Denylists Are Not a Boundary)
+# Julep Native Execution Security Assessment — Host RCE, Trust Boundaries and Python Hardening
 
 Coordinated vulnerability disclosure for `julep-ai/julep`.
 
@@ -52,7 +52,7 @@ Public reference: upstream issue [`julep-ai/julep#1632`](https://github.com/jule
 ## Reports
 
 - [`vendor-facing-report.md`](vendor-facing-report.md) — concise disclosure summary for vendor triage
-- [`report-rt01.md`](report-rt01.md) — original finding: `native_venv` escape, verified with live exfiltration (`poc/rt01/`, `evidence/rt01/`)
+- [`report-rt01.md`](report-rt01.md) — original finding: `native_venv` host code execution, verified with live exfiltration (`poc/rt01/`, `evidence/rt01/`)
 - [`report-hardening-verification.md`](report-hardening-verification.md) — verification/addendum: researcher-proposed hardening variants A/B1/B2, bypass payloads, patch diffs, 14-assertion run matrix (`poc/hardening/`, `evidence/hardening/`)
 - [`evidence/authz/authorization_analysis.md`](evidence/authz/authorization_analysis.md) — supporting appendix: route authz inventory, authentication decisions, signature verification, native-grant binding
 - [`evidence/authz/attacker_model.md`](evidence/authz/attacker_model.md) — complete enumeration of pure-source entry paths and attacker prerequisites
@@ -76,6 +76,7 @@ SHA256 manifests, timestamps, patch diffs, runnable exploit scripts).
 | 2026-11-22 | Hardening verification engagement: variants A/B1/B2 implemented, bypass matrix executed |
 | 2026-11-22 | Authorization analysis: route inventory, auth decisions, signature chain, native-grant binding |
 | 2026-11-22 | Contract/grant-scoping revision: process-level signer test, GHSA status corrected, vendor summary added |
+| 2026-11-22 | Final revision: process-level grant-scoping test now invokes the registered pure; titles normalized |
 | pending | Vendor disclosure / CVE assignment |
 
 ## Authorization analysis — attacker prerequisites
@@ -121,9 +122,10 @@ Corroborating process-level scoping test
 ([`poc/authz/native_grant_scoping.py`](poc/authz/native_grant_scoping.py),
 7/7 PASS): four distinct OS worker processes, two allowlisted signing keys,
 and one shared artifact store show the grant binds a pure *name*, not content
-— fresh workers accept different signed bundles under the same granted name,
-a warm worker pins name→hash only within its process, and a non-allowlisted
-signer is still rejected.
+— accepted workers resolve **and invoke** the pure, returning distinct
+`variant: X` / `variant: Y` results under the same granted name; a warm
+worker pins name→hash only within its process, a fresh worker executes the
+alternate signed bundle, and a non-allowlisted signer is still rejected.
 This is why RT-01 is scored `PR:H` (7.2 proposed upper bound), not `PR:L`
 (8.8); delegated signing or pipeline compromise argues 8.8, and the
 conservative `AV:L` reading is 6.7 Medium.

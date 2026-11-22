@@ -61,12 +61,14 @@ were already published out-of-band by the CLI. There is no tenant-facing
 content hashes (`worker_store.py:334-339` checks
 `verified_pure.name not in native_grants`). The process-level test
 `poc/authz/native_grant_scoping.py` (7/7 PASS) uses four real OS worker
-processes, two distinct allowlisted signers, and one shared artifact store:
-fresh processes accept different signed bundles under the same granted name;
-a warm process pins `name → source_hash` locally; a fresh replacement process
-accepts the second bundle; unsigned content and a signer outside the worker
-allowlist are still rejected. The pin is therefore process-local rather than
-a durable fleet-wide binding.
+processes, two distinct allowlisted signers, and one shared artifact store.
+Accepted workers resolve **and invoke** the registered pure, returning
+distinct `variant: X` / `variant: Y` outputs under the same granted name;
+fresh processes therefore execute different signed bundles under that name,
+a warm process pins `name → source_hash` locally, and a fresh replacement
+process executes the second bundle. Unsigned content and a signer outside the
+worker allowlist are still rejected. The pin is therefore process-local rather
+than a durable fleet-wide binding.
 
 ## 5. Verdict
 

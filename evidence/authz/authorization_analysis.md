@@ -133,15 +133,18 @@ Two gaps in the first pass were closed:
    `JULEP_PURE_NATIVE_DEPS`); unsigned, tampered-manifest, empty/wrong grant,
    and non-allowlisted-signer variants are all rejected. Result: 8/8 — see
    `native_grant_binding.stdout`.
-3. **Grant scoping across worker processes.** `native_grant_scoping.py` now
-   runs four real OS subprocesses against one shared artifact store, with two
-   distinct allowlisted Ed25519 signers. It shows the grant binds a pure
-   *name*, not content or signer choice: fresh worker processes accept
-   different validly-signed bundles under the same granted name; a warm
-   process pins name→source_hash only locally; a fresh replacement process
-   accepts the second bundle; unsigned content and a non-allowlisted signer
-   are still rejected. Result: 7/7 — see `native_grant_scoping.stdout` and
-   `security_contract.md` §4.
+3. **Grant scoping across worker processes.** `native_grant_scoping.py` runs
+   four real OS subprocesses against one shared artifact store, with two
+   distinct allowlisted Ed25519 signers. Accepted workers do not stop at
+   registration: they resolve **and invoke** the pure through
+   `NativeVenvExecutor`, returning distinct `variant: X` / `variant: Y`
+   results under the same granted name. It shows the grant binds a pure
+   *name*, not content or signer choice: fresh worker processes accept and
+   execute different validly-signed bundles under the same granted name; a
+   warm process pins name→source_hash only locally; a fresh replacement
+   process executes the second bundle; unsigned content and a non-allowlisted
+   signer are still rejected. Result: 7/7 — see `native_grant_scoping.stdout`
+   and `security_contract.md` §4.
 
 Structural consequence: `executorTier` is inside the signed manifest bytes —
 the tier claim cannot be modified without invalidating the Ed25519 signature.

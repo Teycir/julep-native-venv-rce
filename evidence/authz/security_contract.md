@@ -119,31 +119,34 @@ Ed25519 signing keys**:
 
 | Worker process | Requests | Result |
 |---|---|---|
-| A | bundle X signed by key A, then bundle Y signed by key B | X accepted; Y rejected by process-local `name -> source_hash` pin |
-| B | bundle Y signed by key B, then unsigned bundle Z | Y accepted; Z rejected as unsigned |
-| C | bundle Y signed by key B | accepted — fresh process has no prior pin |
+| A | bundle X signed by key A, then bundle Y signed by key B | X accepted **and invoked** → `variant: X`; Y rejected by process-local `name -> source_hash` pin |
+| B | bundle Y signed by key B, then unsigned bundle Z | Y accepted **and invoked** → `variant: Y`; Z rejected as unsigned |
+| C | bundle Y signed by key B | accepted **and invoked** → `variant: Y` — fresh process has no prior pin |
 | D | bundle Y signed by key B, allowlist contains only key A | rejected — signer allowlist still enforced |
 
-Observed source hashes differed (`pure:def46719a1e53482` for X,
-`pure:c1cff4dddab73009` for Y), and the four worker PIDs were distinct.
+Observed source hashes differed (`pure:b8d35235a88e9eb5` for X,
+`pure:fe41aa003ac58267` for Y), the four worker PIDs were distinct, and the
+invocations returned the expected per-bundle `variant` values rather than
+stopping at registration.
 
 Consequences:
 
 - The grant binds a pure **name**, not a particular source hash.
 - Across fresh workers/processes, different validly signed bundles from
-  different allowlisted signers can claim the same granted name.
+  different allowlisted signers can claim the same granted name and actually
+  execute under it.
 - The name→hash pin is **process-local**; it does not survive worker restart
   or replacement. A fleet with mixed worker ages or rolling deployments can
   execute different signed content under the same granted name until all
   workers resolve the same bundle reference.
 - This is a deployment-consistency observation, not an independent RCE: every
-  accepted bundle still required a valid signature from a worker-allowlisted
+  executed bundle still required a valid signature from a worker-allowlisted
   signer and the operator grant.
 
-Limitations: the test exercises `resolve_and_register` in fresh Python
-processes with a local artifact store; it does not model Temporal workflow
-replay, control-plane release selection, or production worker lifecycle
-beyond process restart/replacement.
+Limitations: the test exercises `resolve_and_register` plus `get_pure(...)`
+invocation in fresh Python processes with a local artifact store; it does not
+model Temporal workflow replay, control-plane release selection, or production
+worker lifecycle beyond process restart/replacement.
 
 ## 5. Deployment scenarios where the boundary matters
 

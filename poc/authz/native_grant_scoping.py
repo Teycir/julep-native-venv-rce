@@ -10,10 +10,11 @@ two distinct allowlisted Ed25519 signing keys:
   * both claim the same granted pure name;
   * bundle Z is unsigned.
 
-Worker A resolves X then Y in one process: X is accepted and Y is rejected by
-the process-local name->source_hash pin.  Worker B resolves Y then Z: Y is
-accepted under the same granted name and Z is rejected as unsigned.  Worker C
-is a fresh replacement process and accepts Y, showing that the hash pin is not
+Worker A resolves+invokes X then resolves Y in one process: X executes and
+returns variant X; Y is rejected by the process-local name->source_hash pin.
+Worker B resolves+invokes Y then resolves unsigned Z: Y executes and returns
+variant Y; Z is rejected as unsigned.  Worker C is a fresh replacement process,
+resolves+invokes Y, and returns variant Y, showing that the hash pin is not
 durable across worker restart/replacement.  Worker D has only signer A in
 ``JULEP_BUNDLE_ALLOWED_SIGNERS`` and rejects signer-B bundle Y.
 
@@ -38,7 +39,7 @@ SEED_B = bytes.fromhex("77" * 32)
 
 SOURCE_X = f'''# /// script
 # dependencies = ["packaging==24.2"]
-# requires-python = ">=3.14"
+# requires-python = ">=3.12"
 # ///
 import json
 
@@ -49,7 +50,7 @@ def probe(value, **kwargs):
 
 SOURCE_Y = f'''# /// script
 # dependencies = ["packaging==24.2"]
-# requires-python = ">=3.14"
+# requires-python = ">=3.12"
 # ///
 import json
 
@@ -60,7 +61,7 @@ def probe(value, **kwargs):
 
 SOURCE_Z = f'''# /// script
 # dependencies = ["packaging==24.2"]
-# requires-python = ">=3.14"
+# requires-python = ">=3.12"
 # ///
 import json
 
@@ -105,7 +106,7 @@ def build_bundle(store, source: str, *, seed: bytes | None):
         "source": source_digest,
         "sourceHash": source_hash,
         "deps": ["packaging==24.2"],
-        "requiresPython": ">=3.14",
+        "requiresPython": ">=3.12",
         "executorTier": "native",
     }
     manifest = {
@@ -147,6 +148,7 @@ def worker_main(args: argparse.Namespace) -> int:
     pid = os.getpid()
 
     for request in requests:
+        invocation = None
         try:
             result = resolve_and_register(
                 store,
@@ -163,6 +165,19 @@ def worker_main(args: argparse.Namespace) -> int:
                 "registered": result.get("registered", {}),
                 "error": None,
             }
+            if request.get("invoke"):
+                try:
+                    value = registry.get_pure(PURE_NAME)(
+                        request.get("value", "probe"),
+                        **(request.get("kwargs") or {}),
+                    )
+                    invocation = {"ok": True, "value": value, "error": None}
+                except Exception as exc:  # noqa: BLE001 - report exact pure outcome
+                    invocation = {
+                        "ok": False,
+                        "value": None,
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
         except Exception as exc:  # noqa: BLE001 - report exact worker outcome
             payload = {
                 "label": request["label"],
@@ -171,6 +186,7 @@ def worker_main(args: argparse.Namespace) -> int:
                 "registered": {},
                 "error": f"{type(exc).__name__}: {exc}",
             }
+        payload["invocation"] = invocation
         print("WORKER_RESULT " + json.dumps(payload, sort_keys=True), flush=True)
     return 0
 
@@ -266,7 +282,13 @@ def orchestrator_main(args: argparse.Namespace) -> int:
             requests_dir=requests_dir,
             name="worker-a",
             requests=[
-                {"label": "A1.bundle_x", "bundle": bh_x, "signature": sd_x},
+                {
+                    "label": "A1.bundle_x",
+                    "bundle": bh_x,
+                    "signature": sd_x,
+                    "invoke": True,
+                    "value": "probe",
+                },
                 {"label": "A2.bundle_y", "bundle": bh_y, "signature": sd_y},
             ],
             allowed_signers=both_signers,
@@ -278,7 +300,13 @@ def orchestrator_main(args: argparse.Namespace) -> int:
             requests_dir=requests_dir,
             name="worker-b",
             requests=[
-                {"label": "B1.bundle_y", "bundle": bh_y, "signature": sd_y},
+                {
+                    "label": "B1.bundle_y",
+                    "bundle": bh_y,
+                    "signature": sd_y,
+                    "invoke": True,
+                    "value": "probe",
+                },
                 {"label": "B2.unsigned_z", "bundle": bh_z, "signature": sd_z},
             ],
             allowed_signers=both_signers,
@@ -289,7 +317,15 @@ def orchestrator_main(args: argparse.Namespace) -> int:
             store_root=store_root,
             requests_dir=requests_dir,
             name="worker-c",
-            requests=[{"label": "C1.bundle_y", "bundle": bh_y, "signature": sd_y}],
+            requests=[
+                {
+                    "label": "C1.bundle_y",
+                    "bundle": bh_y,
+                    "signature": sd_y,
+                    "invoke": True,
+                    "value": "probe",
+                }
+            ],
             allowed_signers=both_signers,
         )
         proc_d, results_d = _launch_worker(
@@ -319,20 +355,47 @@ def orchestrator_main(args: argparse.Namespace) -> int:
         c1 = _result_by_label(results_c, "C1.bundle_y")
         d1 = _result_by_label(results_d, "D1.bundle_y")
 
-        def accepted(result: dict | None, expected_hash: str) -> tuple[bool, str]:
+        def accepted(
+            result: dict | None,
+            expected_hash: str,
+            expected_variant: str | None = None,
+        ) -> tuple[bool, str]:
             if result is None:
                 return False, "no worker result"
             if not result.get("ok"):
                 return False, result.get("error") or "rejected"
             registered = result.get("registered", {})
             actual = registered.get(PURE_NAME)
-            return actual == expected_hash, f"registered={actual}"
+            details = [f"registered={actual}"]
+            if actual != expected_hash:
+                return False, "; ".join(details)
+            if expected_variant is None:
+                return True, "; ".join(details)
 
-        ok, detail = accepted(a1, hash_x)
-        check("1. OS worker A accepts signer-A bundle X", ok, detail)
+            invocation = result.get("invocation")
+            if not isinstance(invocation, dict):
+                return False, f"registered={actual}; invocation=missing"
+            if not invocation.get("ok"):
+                return False, (
+                    f"registered={actual}; invocation_error="
+                    f"{invocation.get('error') or 'failed'}"
+                )
+            value = invocation.get("value")
+            expected_value = {"variant": expected_variant, "value": "probe"}
+            if value != expected_value:
+                return False, f"registered={actual}; invocation={value!r}"
+            details.append(f"invocation={value}")
+            return True, "; ".join(details)
 
-        ok, detail = accepted(b1, hash_y)
-        check("2. OS worker B accepts signer-B bundle Y (same granted name)", ok, detail)
+        ok, detail = accepted(a1, hash_x, expected_variant="X")
+        check("1. OS worker A accepts+invokes signer-A bundle X", ok, detail)
+
+        ok, detail = accepted(b1, hash_y, expected_variant="Y")
+        check(
+            "2. OS worker B accepts+invokes signer-B bundle Y (same granted name)",
+            ok,
+            detail,
+        )
 
         if a2 is None:
             check("3. warm worker A rejects bundle Y (hash pin)", False, "no worker result")
@@ -354,8 +417,8 @@ def orchestrator_main(args: argparse.Namespace) -> int:
                 error or "accepted",
             )
 
-        ok, detail = accepted(c1, hash_y)
-        check("5. fresh replacement worker C accepts bundle Y", ok, detail)
+        ok, detail = accepted(c1, hash_y, expected_variant="Y")
+        check("5. fresh replacement worker C accepts+invokes bundle Y", ok, detail)
 
         if d1 is None:
             check("6. worker D rejects signer-B bundle (allowlist only has A)", False,
@@ -375,7 +438,7 @@ def orchestrator_main(args: argparse.Namespace) -> int:
         }
         pids.discard(None)
         check(
-            "7. resolutions ran in distinct OS worker processes",
+            "7. resolution+invocation ran in distinct OS worker processes",
             len(pids) == 4,
             f"pids={sorted(pids)}",
         )
@@ -384,9 +447,10 @@ def orchestrator_main(args: argparse.Namespace) -> int:
     print("Structural result: the native grant binds a pure NAME across distinct")
     print("worker processes and across distinct allowlisted signers; it does not")
     print("bind source content. A warm process pins name->source_hash, but that")
-    print("pin is process-local: a fresh/replacement worker accepts whichever")
-    print("allowlisted-signer bundle its deployment resolves for the granted name.")
-    print("The signer allowlist and signature checks remain enforced independently.")
+    print("pin is process-local: a fresh/replacement worker accepts and executes")
+    print("whichever allowlisted-signer bundle its deployment resolves for the")
+    print("granted name. The signer allowlist and signature checks remain enforced")
+    print("independently.")
     failed = [item for item in checks if not item[1]]
     print()
     print(f"RESULT: {'PASS' if not failed else 'FAIL'} ({len(checks) - len(failed)}/{len(checks)} assertions)")
