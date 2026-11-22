@@ -5,7 +5,7 @@
 | Field | Value |
 |---|---|
 | Target | `julep-ai/julep` (self-hosted control plane + native venv worker) |
-| Engagement dir | `/home/kali/BugBounty/julep/20261121/214637` |
+| Engagement dir | repository root (all paths below are relative to it) |
 | Generated (UTC) | 2026-11-21T21:46:37Z |
 | Scope | Local authorised lab: cloned repo `fc74d079a18c8124b2627ca4717f5a9c269267db`, package `3.0.0rc6` |
 | Status | **FINAL — verified with live exfiltration** |
@@ -27,7 +27,7 @@ Julep ships bundle-sourced “pures” through two execution tiers: `wasm` (sand
 | Medium | 0 |
 | Low | 0 |
 
-Overall: **High (CVSS 3.1 8.8)** — authenticated bundle publisher / signing-key holder or malicious third-party bundle reaches host command execution on a worker that has granted the pure native tier.
+Overall: **High (CVSS 3.1 7.2)** — exploitation requires an admin-level API key (bundle publication routes are `require_admin`) and/or an allowlisted operator signing key plus a worker `JULEP_PURE_NATIVE_DEPS` grant; absent those, an attacker cannot introduce an executable bundle.
 
 ### 1.4 Recommendation Summary
 1. Apply the tier-aware denylist and reflection ban described in issue #1632.
@@ -45,14 +45,15 @@ Overall: **High (CVSS 3.1 8.8)** — authenticated bundle publisher / signing-ke
 
 | ID | Severity | CVSS 3.1 | CWE | Title | Status |
 |----|----------|----------|-----|-------|--------|
-| RT-01 | High | 8.8 | CWE-94 | Native venv tier accepts OS/process modules and executes bundle source on the host | Verified |
+| RT-01 | High | 7.2 | CWE-94 | Native venv tier accepts OS/process modules and executes bundle source on the host | Verified |
 
 ## 4. Findings Detail
 
 ### RT-01 — Code Injection in the native_venv bundle tier allows host command execution and secret exfiltration
 
 - **Severity:** High
-- **CVSS 3.1:** 8.8 — `AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H` — https://www.first.org/cvss/calculator/3.1#CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H
+- **CVSS 3.1:** 7.2 — `AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` — https://www.first.org/cvss/calculator/3.1#CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H
+- **Scoring note (2026-11-22 revision):** the original 8.8 (`PR:L`) predated the authorization analysis. `evidence/authz/authorization_analysis.md` demonstrates that bundle publication routes require `require_admin` and native execution additionally requires an allowlisted Ed25519 signer plus a worker-side `JULEP_PURE_NATIVE_DEPS` grant — i.e. high privileges (`PR:H`). Deployments that hand admin keys to tenants, or expose the operator signing key, collapse this to `PR:L` (8.8) or worse; see the appendix's deployment caveat.
 - **CWE:** CWE-94 (Improper Control of Generation of Code / Code Injection); related CWE-184 (Incomplete List of Disallowed Inputs)
 - **Affected URL/Area:** `julep/registry.py::_validate_portable_source` (line 150), `julep/registry.py::register_pure_from_source` (line 407), `julep/execution/native_venv_executor.py::_DRIVER` (line 25) and `exec()` (line 39), `julep/worker_store.py::_manifest_pures` (line 109) and `resolve_and_register` native grant check (line 338)
 - **Difficulty to exploit:** Low
@@ -94,19 +95,19 @@ The native grant is a mitigating control, but the tier is designed for dependenc
 
 Prerequisites: Linux, Python ≥3.14, `uv` on PATH, network access to PyPI for `packaging==24.2`, repo cloned at `~/research/julep` (commit `fc74d07`).
 
-1. Save the PoC from `pocs/poc_native_venv_rce.py`.
+1. Save the PoC from `poc/rt01/poc_native_venv_rce.py`.
 2. Run the self-contained exploit (starts its own listener on `127.0.0.1:8899`):
 
 ```bash
 cd /tmp/opencode/julep-poc
-python3 /home/kali/BugBounty/julep/20261121/214637/pocs/poc_native_venv_rce.py
+python3 poc/rt01/poc_native_venv_rce.py
 ```
 
 3. Observe the listener receive the POST and the payload return the proof.
 4. (Optional) Run the standalone receiver instead:
 
 ```bash
-python3 pocs/listener.py 8899 proof.raw
+python3 poc/rt01/listener.py 8899 proof.raw
 # then run the exploit with its internal listener disabled/port changed
 ```
 
@@ -195,8 +196,8 @@ Verbatim exploit output (`evidence/poc-run.log`):
 | `evidence/bundle_signature.json` | `5d78240ff79a1ff8609c29a4f9000706aeb1dce12334b386ab7f5e79795fdc2d` |
 | `evidence/payload_source.py` | `4cbf53639db5125a77739bbdacc8e36a4b82f6bcf8862287e8de2631b85e2598` |
 | `evidence/marker.txt` | `672c8bf65a4b702c64437566ac160844997fa7a6cbd8d7179305cb421f73d38c` |
-| `pocs/poc_native_venv_rce.py` | `20b0b2ec16acafa8c554dace93b089b0cb71e7b51098739fc1fed1253bd85e58` |
-| `pocs/listener.py` | `d62cebc90b3f5bd89de2e5ff2a642e01324c5acecc36faa74f847f827f482ee6` |
+| `poc/rt01/poc_native_venv_rce.py` | `20b0b2ec16acafa8c554dace93b089b0cb71e7b51098739fc1fed1253bd85e58` |
+| `poc/rt01/listener.py` | `d62cebc90b3f5bd89de2e5ff2a642e01324c5acecc36faa74f847f827f482ee6` |
 
 Proof checks: unique marker matched, host environment secret matched (`sk-live-poc-secret-9d1f4a`), real `id` output captured, `/etc/passwd` read and hashed.
 
@@ -228,8 +229,8 @@ Self-hosted Julep `3.0.0rc6` (commit `fc74d07`) and nearby commits where `_valid
 ### 5.1 Evidence inventory
 
 ```
-d62cebc90b3f5bd89de2e5ff2a642e01324c5acecc36faa74f847f827f482ee6  pocs/listener.py
-20b0b2ec16acafa8c554dace93b089b0cb71e7b51098739fc1fed1253bd85e58  pocs/poc_native_venv_rce.py
+d62cebc90b3f5bd89de2e5ff2a642e01324c5acecc36faa74f847f827f482ee6  poc/rt01/listener.py
+20b0b2ec16acafa8c554dace93b089b0cb71e7b51098739fc1fed1253bd85e58  poc/rt01/poc_native_venv_rce.py
 21f1a12e8f39ae7ef779b58efc8500ca950540b73b39dccd189f3b232be9f4ae  evidence/bundle_manifest.json
 5d78240ff79a1ff8609c29a4f9000706aeb1dce12334b386ab7f5e79795fdc2d  evidence/bundle_signature.json
 672c8bf65a4b702c64437566ac160844997fa7a6cbd8d7179305cb421f73d38c  evidence/marker.txt
@@ -256,10 +257,10 @@ d62cebc90b3f5bd89de2e5ff2a642e01324c5acecc36faa74f847f827f482ee6  pocs/listener.
 
 ## 6. Addendum — Remediation verification (2026-11-22T10:09:30Z)
 
-**Correction note:** the RT-01 recommendation that a restricted `__builtins__` mapping “closes the reflection class” is not sufficient as a standalone control. Verification report: `/home/kali/BugBounty/julep/20261122/100857/report_20261122_100857.md`.
+**Correction note:** the RT-01 recommendation that a restricted `__builtins__` mapping “closes the reflection class” is not sufficient as a standalone control. Verification report: `report-hardening-verification.md`.
 
-- The issue #1632 tier-aware import denylist + reflection ban is bypassable via `operator.attrgetter` and `pure.__globals__` (RT-02, High 8.8).
-- Restricted `__builtins__` alone is bypassable via `().__class__.__base__.__subclasses__()` → `sys.modules["os"]` (RT-03, High 8.8).
+- The issue #1632 tier-aware import denylist + reflection ban is bypassable via `operator.attrgetter` and `pure.__globals__` (RT-02 — remediation bypass, not an independent production vulnerability; inherits RT-01's prerequisites).
+- Restricted `__builtins__` alone is bypassable via `().__class__.__base__.__subclasses__()` → `sys.modules["os"]` (RT-03 — remediation bypass, same classification).
 - A layered in-process control blocks the tested payloads but breaks legitimate native dependency imports (RT-04, Informational).
 
 RT-01 remains exploitable and was re-verified at 2026-11-22T10:08:19Z–10:08:21Z. The primary fix remains OS-level sandboxing.

@@ -1,0 +1,11 @@
+source: /home/teycir/ResearchAIRedTeam/julep
+commit: fc74d079a18c8124b2627ca4717f5a9c269267db (expected fc74d079a18c8124b2627ca4717f5a9c269267db) -> OK
+dirty: False
+routes: 25 mutating: 10 ungated_mutating: 0
+gate require_admin: verified /home/teycir/ResearchAIRedTeam/julep/julep/server/auth.py:236
+gate require_worker: verified /home/teycir/ResearchAIRedTeam/julep/julep/server/auth.py:245
+gate require_client: verified /home/teycir/ResearchAIRedTeam/julep/julep/server/auth.py:254
+gate require_key: verified /home/teycir/ResearchAIRedTeam/julep/julep/server/auth.py:220
+gate KeyRing.authenticate: verified /home/teycir/ResearchAIRedTeam/julep/julep/server/auth.py:152
+ungated GETs (informational): /health/ready, /health
+RESULT: PASS

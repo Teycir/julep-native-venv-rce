@@ -5,11 +5,11 @@
 | Field | Value |
 |---|---|
 | Target | `julep-ai/julep` — self-hosted control plane + `native_venv` worker |
-| Engagement dir | `/home/kali/BugBounty/julep/20261122/100857` |
+| Engagement dir | repository root (all paths below are relative to it) |
 | Generated (UTC) | 2026-11-22T10:09:30Z |
 | Scope | Local authorised lab: clone at `fc74d079a18c8124b2627ca4717f5a9c269267db`, package `3.0.0rc6` |
 | Status | **FINAL — verified with live exfiltration** |
-| Relation to prior work | Verification/addendum to `julep/20261121/214637` (RT-01, High 8.8) |
+| Relation to prior work | Verification/addendum to `julep/20261121/214637` (RT-01, High 7.2) |
 | Public reference | GHSA-rhfp-jw6w-wrqq / `julep-ai/julep#1632` |
 
 ## 1. Executive Summary
@@ -31,12 +31,13 @@ The original escape still reproduces unchanged (RT-01 re-verified). Both propose
 | Severity | Count |
 |---|---|
 | Critical | 0 |
-| High | 2 (RT-02, RT-03) |
+| High | 1 production finding (RT-01) |
+| Remediation bypass | 2 (RT-02, RT-03 — inherit RT-01 prerequisites; no independent CVSS) |
 | Medium | 0 |
 | Low | 0 |
 | Informational | 1 (RT-04) |
 
-RT-01 remains **High 8.8** and re-verified. A deployment that applies only the issue #1632 patch, or only restricted builtins, remains exploitable at the same severity as RT-01.
+RT-01 remains **High 7.2** (`AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`, rescored after the authorization analysis — see `evidence/authz/authorization_analysis.md`) and re-verified. A deployment that applies only the issue #1632 patch, or only restricted builtins, remains exploitable at the same severity as RT-01.
 
 ### 1.4 Recommendation Summary
 
@@ -50,7 +51,7 @@ RT-01 remains **High 8.8** and re-verified. A deployment that applies only the i
 - **In-scope assets:** local clone of `julep-ai/julep` at `fc74d079a18c8124b2627ca4717f5a9c269267db`; `julep/registry.py::_validate_portable_source`, `Registry.register_pure_from_source`, `julep/execution/native_venv_executor.py::_DRIVER`, `julep/worker_store.py::resolve_and_register`.
 - **Constraints:** closed lab, no external target, Ed25519 test key only, loopback exfil listener.
 - **Methodology (PTES):** reproduce RT-01 → implement candidate hardening variants A/B1/B2 → execute the same signed-bundle resolution and invocation path → compare direct and bypass payloads → functional regression test → report.
-- **Hardening variants** (patches in `pocs/patches/`, patched files in `pocs/patched/`):
+- **Hardening variants** (patches in `poc/hardening/patches/`, patched files in `poc/hardening/patched/`):
   - **A** — tier-aware `_NATIVE_VENV_FORBIDDEN_STDLIB_MODULES` plus AST bans on `__import__`/`eval`/`exec`/`compile`/`globals`/`vars` and selected dunder attributes.
   - **B1** — driver-only capability removal: `exec(source, {"pure": pure, "__builtins__": _SAFE_BUILTINS})`.
   - **B2** — A + B1 + ban on every dunder `Name`/`Attribute` node.
@@ -59,9 +60,9 @@ RT-01 remains **High 8.8** and re-verified. A deployment that applies only the i
 
 | ID | Severity | CVSS 3.1 | CWE | Title | Status |
 |----|----------|----------|-----|-------|--------|
-| RT-01 | High | 8.8 | CWE-94 | Native venv tier executes bundle source on host (re-verified) | Verified |
-| RT-02 | High | 8.8 | CWE-184, CWE-94 | Tier-aware import denylist + reflection ban bypassable via `operator.attrgetter` and `pure.__globals__` | Verified |
-| RT-03 | High | 8.8 | CWE-693, CWE-94 | Restricted `__builtins__` bypassable via object-subclass walk to `sys.modules["os"]` | Verified |
+| RT-01 | High | 7.2 | CWE-94 | Native venv tier executes bundle source on host (re-verified) | Verified |
+| RT-02 | Remediation bypass | — | CWE-184, CWE-94 | Tier-aware import denylist + reflection ban bypassable via `operator.attrgetter` and `pure.__globals__` | Verified |
+| RT-03 | Remediation bypass | — | CWE-693, CWE-94 | Restricted `__builtins__` bypassable via object-subclass walk to `sys.modules["os"]` | Verified |
 | RT-04 | Informational | 0.0 | CWE-693 | Layered in-process control blocks tested payloads but breaks native dependency imports | Verified |
 
 ## 4. Findings Detail
@@ -69,7 +70,7 @@ RT-01 remains **High 8.8** and re-verified. A deployment that applies only the i
 ### RT-01 — Code Injection in the native_venv bundle tier allows host command execution and secret exfiltration (re-verification)
 
 - **Severity:** High
-- **CVSS 3.1:** 8.8 — `AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H`
+- **CVSS 3.1:** 7.2 — `AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`
 - **CWE:** CWE-94
 - **Affected URL/Area:** `julep/registry.py`, `julep/execution/native_venv_executor.py`, `julep/worker_store.py`
 - **Verified at (UTC):** 2026-11-22T10:08:19Z – 2026-11-22T10:08:21Z
@@ -94,8 +95,8 @@ A second control using the harness against the unmodified tree (`original_direct
 
 ### RT-02 — Tier-aware import denylist plus reflection ban bypassable via `operator.attrgetter` and `pure.__globals__`
 
-- **Severity:** High
-- **CVSS 3.1:** 8.8 — `AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H` — https://www.first.org/cvss/calculator/3.1#CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H
+- **Severity:** Remediation bypass (not an independent production vulnerability — the bypass targets the *proposed* issue #1632 hardening, which is not deployed upstream; inherits RT-01's attacker prerequisites)
+- **CVSS 3.1:** n/a (inherits RT-01: 7.2 `AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`)
 - **CWE:** CWE-184 (Incomplete List of Disallowed Inputs); CWE-94 (Code Injection)
 - **Affected URL/Area:** `julep/registry.py::_validate_portable_source` (hardened Variant A)
 - **Difficulty to exploit:** Low
@@ -140,9 +141,9 @@ Prerequisites: Linux, Python 3.14.8, `uv` 0.12.5, network/PyPI access for `packa
 ```bash
 mkdir -p /tmp/opencode/julep-hard/A
 git -C ~/research/julep archive HEAD | tar -x -C /tmp/opencode/julep-hard/A
-cp /home/kali/BugBounty/julep/20261122/100857/pocs/patched/A_julep_registry.py \
+cp poc/hardening/patched/A_julep_registry.py \
    /tmp/opencode/julep-hard/A/julep/registry.py
-cp /home/kali/BugBounty/julep/20261122/100857/pocs/patched/A_julep_worker_store.py \
+cp poc/hardening/patched/A_julep_worker_store.py \
    /tmp/opencode/julep-hard/A/julep/worker_store.py
 ```
 
@@ -150,9 +151,9 @@ cp /home/kali/BugBounty/julep/20261122/100857/pocs/patched/A_julep_worker_store.
 
 ```bash
 cd /tmp/opencode/julep-hard
-python3 /home/kali/BugBounty/julep/20261122/100857/pocs/hardening_probe.py \
+python3 poc/hardening/hardening_probe.py \
   --src A --name poc.attrgetter_bypass.v1 \
-  --source /home/kali/BugBounty/julep/20261122/100857/pocs/payloads/attrgetter_bypass.py \
+  --source poc/hardening/payloads/attrgetter_bypass.py \
   --port 8922 --out evidence_final/A_attrgetter_bypass_proof.raw
 ```
 
@@ -199,7 +200,7 @@ A second Variant A bypass (`evidence/A_denylist_bypass.log`, proof sha256 `83746
 | `evidence/A_attrgetter_bypass.log` | `20842224762532b50cef710be4234148bad97ab282dd51f1f347467be12eb931` |
 | `evidence/A_denylist_bypass_proof.raw` | `837464424689adb7428c6ce9461d47d5ec9fe1c3742f6f0060b3e64cb9db837f` |
 | `evidence/A_direct_import.log` | `0359bfd6483fbcd3e320e52866580aaa802dca3e602b85d0005f78e3f1ec0097` |
-| `pocs/payloads/attrgetter_bypass.py` | `4259f723766e1a1a89df911cf40b3764fd2126341d1e491835051af300409059` |
+| `poc/hardening/payloads/attrgetter_bypass.py` | `4259f723766e1a1a89df911cf40b3764fd2126341d1e491835051af300409059` |
 
 #### Impact
 
@@ -214,7 +215,7 @@ Self-hosted Julep `3.0.0rc6` / commit `fc74d07` with the native tier enabled and
 - Do not treat the import denylist or AST reflection ban as a security boundary.
 - If retained, add `operator`, `inspect`, `functools`, `types`, `gc`, `builtins` to the native denylist and reject string-argument `attrgetter` patterns; this is still not a boundary.
 - Primary fix: run native pures in a container/namespace with seccomp, non-root UID, read-only rootfs, no host environment, no host mounts, and an egress allowlist.
-- Regression test: keep `pocs/payloads/attrgetter_bypass.py` in CI.
+- Regression test: keep `poc/hardening/payloads/attrgetter_bypass.py` in CI.
 
 #### References
 
@@ -227,8 +228,8 @@ Self-hosted Julep `3.0.0rc6` / commit `fc74d07` with the native tier enabled and
 
 ### RT-03 — Restricted `__builtins__` bypassable via object-subclass walk to `sys.modules["os"]`
 
-- **Severity:** High
-- **CVSS 3.1:** 8.8 — `AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H` — https://www.first.org/cvss/calculator/3.1#CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H
+- **Severity:** Remediation bypass (same classification as RT-02)
+- **CVSS 3.1:** n/a (inherits RT-01: 7.2 `AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`)
 - **CWE:** CWE-693 (Protection Mechanism Failure); CWE-94 (Code Injection)
 - **Affected URL/Area:** `julep/execution/native_venv_executor.py::_DRIVER` (hardened Variant B1)
 - **Difficulty to exploit:** Low
@@ -276,7 +277,7 @@ No restricted builtin is required: attribute access, iteration, and exceptions a
 ```bash
 mkdir -p /tmp/opencode/julep-hard/B1
 git -C ~/research/julep archive HEAD | tar -x -C /tmp/opencode/julep-hard/B1
-cp /home/kali/BugBounty/julep/20261122/100857/pocs/patched/B1_native_venv_executor.py \
+cp poc/hardening/patched/B1_native_venv_executor.py \
    /tmp/opencode/julep-hard/B1/julep/execution/native_venv_executor.py
 ```
 
@@ -284,9 +285,9 @@ cp /home/kali/BugBounty/julep/20261122/100857/pocs/patched/B1_native_venv_execut
 
 ```bash
 cd /tmp/opencode/julep-hard
-python3 /home/kali/BugBounty/julep/20261122/100857/pocs/hardening_probe.py \
+python3 poc/hardening/hardening_probe.py \
   --src B1 --name poc.builtins_bypass.v1 \
-  --source /home/kali/BugBounty/julep/20261122/100857/pocs/payloads/builtins_bypass.py \
+  --source poc/hardening/payloads/builtins_bypass.py \
   --port 8926 --out evidence_final/B1_builtins_bypass_proof.raw
 ```
 
@@ -329,7 +330,7 @@ Direct `import os` against Variant B1 is blocked (`evidence/B1_direct_import.log
 | `evidence/B1_builtins_bypass_proof.raw` | `561db0c3f88ccef13934ed9dda971591e3f52e6496f3eb2e0ac6e4300c4d39da` |
 | `evidence/B1_builtins_bypass.log` | `9db1fc7437abb320002ce8c62b88fc00d998ce43d3ec16ac35da996d950bf8fb` |
 | `evidence/B1_direct_import.log` | `fd24ae6fc14ebb9f2d1f2f496c1bd229c50ace31ea5c3579579e4c8fb6001ecb` |
-| `pocs/payloads/builtins_bypass.py` | `62cb8a6b391926a8d67c14fda2b9c8fc510ed7cb660a466e42abe068a79daac5` |
+| `poc/hardening/payloads/builtins_bypass.py` | `62cb8a6b391926a8d67c14fda2b9c8fc510ed7cb660a466e42abe068a79daac5` |
 
 #### Impact
 
@@ -344,7 +345,7 @@ Self-hosted Julep `3.0.0rc6` / `fc74d07` with native tier enabled, where the res
 - Do not claim or rely on restricted `__builtins__` as a sandbox.
 - If retained, pair it with an all-dunder AST ban and an OS sandbox; neither alone is sufficient.
 - Primary fix: container/namespace isolation with seccomp, non-root, read-only rootfs, no host env/mounts, egress allowlist.
-- Regression test: keep `pocs/payloads/builtins_bypass.py` in CI.
+- Regression test: keep `poc/hardening/payloads/builtins_bypass.py` in CI.
 
 #### References
 
@@ -406,14 +407,14 @@ aa711e8b5024db98fab9895356c48204e809b8c8226fdd9193524be733862553  evidence/basel
 9db1fc7437abb320002ce8c62b88fc00d998ce43d3ec16ac35da996d950bf8fb  evidence/B1_builtins_bypass.log
 28d1d5cee132484cc954f666630929fc88871a6208a621fbb33787da18d92875  evidence/timestamps.tsv
 0bd3d1ab251a4654ced3b97713ee9707ab32371b760af7ffd58d6de5e694e48b  evidence/matrix.json
-4259f723766e1a1a89df911cf40b3764fd2126341d1e491835051af300409059  pocs/payloads/attrgetter_bypass.py
-62cb8a6b391926a8d67c14fda2b9c8fc510ed7cb660a466e42abe068a79daac5  pocs/payloads/builtins_bypass.py
-a2b58cb14025205e812e25ebde8fa2a41d5fbdc18a828ffc2461a2fb5be38a75  pocs/payloads/denylist_bypass.py
-0adf88e503f102979e7775aa29900edab64e6a6546eeaf5530ffa1a617c1ee2e  pocs/payloads/direct_import.py
-b37ce7941573442ce8d76626b703bf398a7b3d7f73c21e03652530a172794c7f  pocs/hardening_probe.py
-21b446d2c05b3ad6567a6af07ce1e5ee08d3eaab8e5458683041d8287219c6fd  pocs/patched/A_julep_registry.py
-6dd8b689138ac77bcaf80c16597aade3e5147226e81beb93d655752d4aff4aaf  pocs/patched/B1_native_venv_executor.py
-409fa6f672cc450c9d676c23079bdb6a6b73e64eddf64da53ead304a331d729b  pocs/patched/B2_julep_registry.py
+4259f723766e1a1a89df911cf40b3764fd2126341d1e491835051af300409059  poc/hardening/payloads/attrgetter_bypass.py
+62cb8a6b391926a8d67c14fda2b9c8fc510ed7cb660a466e42abe068a79daac5  poc/hardening/payloads/builtins_bypass.py
+a2b58cb14025205e812e25ebde8fa2a41d5fbdc18a828ffc2461a2fb5be38a75  poc/hardening/payloads/denylist_bypass.py
+0adf88e503f102979e7775aa29900edab64e6a6546eeaf5530ffa1a617c1ee2e  poc/hardening/payloads/direct_import.py
+b37ce7941573442ce8d76626b703bf398a7b3d7f73c21e03652530a172794c7f  poc/hardening/hardening_probe.py
+21b446d2c05b3ad6567a6af07ce1e5ee08d3eaab8e5458683041d8287219c6fd  poc/hardening/patched/A_julep_registry.py
+6dd8b689138ac77bcaf80c16597aade3e5147226e81beb93d655752d4aff4aaf  poc/hardening/patched/B1_native_venv_executor.py
+409fa6f672cc450c9d676c23079bdb6a6b73e64eddf64da53ead304a331d729b  poc/hardening/patched/B2_julep_registry.py
 ```
 
 ### 5.2 Tools used

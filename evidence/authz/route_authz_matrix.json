@@ -1,0 +1,479 @@
+{
+  "generated_at": "2026-11-22T15:48:59Z",
+  "source": "/home/teycir/ResearchAIRedTeam/julep",
+  "commit": "fc74d079a18c8124b2627ca4717f5a9c269267db",
+  "expected_commit": "fc74d079a18c8124b2627ca4717f5a9c269267db",
+  "commit_ok": true,
+  "dirty": false,
+  "routes": [
+    {
+      "method": "PUT",
+      "path": "/artifacts/{sha256}",
+      "func": "put_blob",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/artifacts.py",
+      "line": 28,
+      "direct_deps": [
+        "require_admin"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_admin",
+        "require_key"
+      ],
+      "gate_level": "admin",
+      "gated": true
+    },
+    {
+      "method": "HEAD",
+      "path": "/artifacts/{sha256}",
+      "func": "head_blob",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/artifacts.py",
+      "line": 54,
+      "direct_deps": [
+        "require_client"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_client",
+        "require_key"
+      ],
+      "gate_level": "client_or_admin",
+      "gated": true
+    },
+    {
+      "method": "POST",
+      "path": "/deployments",
+      "func": "activate_deployment",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/deployments.py",
+      "line": 62,
+      "direct_deps": [
+        "require_admin"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_admin",
+        "require_key"
+      ],
+      "gate_level": "admin",
+      "gated": true
+    },
+    {
+      "method": "GET",
+      "path": "/deployments",
+      "func": "list_deployments",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/deployments.py",
+      "line": 118,
+      "direct_deps": [
+        "require_client"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_client",
+        "require_key"
+      ],
+      "gate_level": "client_or_admin",
+      "gated": true
+    },
+    {
+      "method": "GET",
+      "path": "/health/ready",
+      "func": "health_ready",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/health.py",
+      "line": 74,
+      "direct_deps": [],
+      "router_level_deps": [],
+      "transitive_deps": [],
+      "gate_level": null,
+      "gated": false
+    },
+    {
+      "method": "GET",
+      "path": "/health",
+      "func": "health",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/health.py",
+      "line": 81,
+      "direct_deps": [],
+      "router_level_deps": [],
+      "transitive_deps": [],
+      "gate_level": null,
+      "gated": false
+    },
+    {
+      "method": "GET",
+      "path": "/ready",
+      "func": "ready",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/health.py",
+      "line": 86,
+      "direct_deps": [
+        "require_client"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_client",
+        "require_key"
+      ],
+      "gate_level": "client_or_admin",
+      "gated": true
+    },
+    {
+      "method": "POST",
+      "path": "/releases",
+      "func": "publish_release",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/releases.py",
+      "line": 101,
+      "direct_deps": [
+        "require_admin"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_admin",
+        "require_key"
+      ],
+      "gate_level": "admin",
+      "gated": true
+    },
+    {
+      "method": "GET",
+      "path": "/releases",
+      "func": "list_releases",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/releases.py",
+      "line": 144,
+      "direct_deps": [
+        "require_client"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_client",
+        "require_key"
+      ],
+      "gate_level": "client_or_admin",
+      "gated": true
+    },
+    {
+      "method": "GET",
+      "path": "/releases/{release_hash}",
+      "func": "get_release",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/releases.py",
+      "line": 158,
+      "direct_deps": [
+        "require_client"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_client",
+        "require_key"
+      ],
+      "gate_level": "client_or_admin",
+      "gated": true
+    },
+    {
+      "method": "POST",
+      "path": "/runs",
+      "func": "start_run",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/runs.py",
+      "line": 173,
+      "direct_deps": [
+        "require_client"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_client",
+        "require_key"
+      ],
+      "gate_level": "client_or_admin",
+      "gated": true
+    },
+    {
+      "method": "GET",
+      "path": "/runs",
+      "func": "list_runs",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/runs.py",
+      "line": 359,
+      "direct_deps": [
+        "require_client"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_client",
+        "require_key"
+      ],
+      "gate_level": "client_or_admin",
+      "gated": true
+    },
+    {
+      "method": "GET",
+      "path": "/runs/{run_id}",
+      "func": "get_run",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/runs.py",
+      "line": 378,
+      "direct_deps": [
+        "require_client"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_client",
+        "require_key"
+      ],
+      "gate_level": "client_or_admin",
+      "gated": true
+    },
+    {
+      "method": "POST",
+      "path": "/runs/{run_id}/cancel",
+      "func": "cancel_run",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/runs.py",
+      "line": 411,
+      "direct_deps": [
+        "require_client"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_client",
+        "require_key"
+      ],
+      "gate_level": "client_or_admin",
+      "gated": true
+    },
+    {
+      "method": "POST",
+      "path": "/runs/{run_id}/terminate",
+      "func": "terminate_run",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/runs.py",
+      "line": 420,
+      "direct_deps": [
+        "require_client"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_client",
+        "require_key"
+      ],
+      "gate_level": "client_or_admin",
+      "gated": true
+    },
+    {
+      "method": "GET",
+      "path": "/runs/{run_id}/events",
+      "func": "run_events",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/runs.py",
+      "line": 459,
+      "direct_deps": [
+        "require_client"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_client",
+        "require_key"
+      ],
+      "gate_level": "client_or_admin",
+      "gated": true
+    },
+    {
+      "method": "GET",
+      "path": "/runs/{run_id}/result",
+      "func": "run_result",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/runs.py",
+      "line": 491,
+      "direct_deps": [
+        "require_client"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_client",
+        "require_key"
+      ],
+      "gate_level": "client_or_admin",
+      "gated": true
+    },
+    {
+      "method": "GET",
+      "path": "/runs/{run_id}/values/{value_ref}",
+      "func": "get_run_value",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/runs.py",
+      "line": 516,
+      "direct_deps": [
+        "require_client"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_client",
+        "require_key"
+      ],
+      "gate_level": "client_or_admin",
+      "gated": true
+    },
+    {
+      "method": "GET",
+      "path": "/runs/{run_id}/gates",
+      "func": "get_open_gates",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/runs.py",
+      "line": 533,
+      "direct_deps": [
+        "require_client"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_client",
+        "require_key"
+      ],
+      "gate_level": "client_or_admin",
+      "gated": true
+    },
+    {
+      "method": "POST",
+      "path": "/runs/{run_id}/signals/human",
+      "func": "signal_human_gate",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/runs.py",
+      "line": 547,
+      "direct_deps": [
+        "require_client"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_client",
+        "require_key"
+      ],
+      "gate_level": "client_or_admin",
+      "gated": true
+    },
+    {
+      "method": "PUT",
+      "path": "/secrets/{name}",
+      "func": "put_secret",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/secrets.py",
+      "line": 45,
+      "direct_deps": [
+        "require_admin"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_admin",
+        "require_key"
+      ],
+      "gate_level": "admin",
+      "gated": true
+    },
+    {
+      "method": "GET",
+      "path": "/secrets",
+      "func": "list_secrets",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/secrets.py",
+      "line": 68,
+      "direct_deps": [
+        "require_admin"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_admin",
+        "require_key"
+      ],
+      "gate_level": "admin",
+      "gated": true
+    },
+    {
+      "method": "GET",
+      "path": "/secrets/{name}/value",
+      "func": "get_secret_value",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/secrets.py",
+      "line": 76,
+      "direct_deps": [
+        "require_worker"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_key",
+        "require_worker"
+      ],
+      "gate_level": "worker",
+      "gated": true
+    },
+    {
+      "method": "POST",
+      "path": "/secrets/{name}/archive",
+      "func": "archive_secret",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/secrets.py",
+      "line": 123,
+      "direct_deps": [
+        "require_admin"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_admin",
+        "require_key"
+      ],
+      "gate_level": "admin",
+      "gated": true
+    },
+    {
+      "method": "DELETE",
+      "path": "/secrets/{name}",
+      "func": "delete_secret",
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/routes/secrets.py",
+      "line": 137,
+      "direct_deps": [
+        "require_admin"
+      ],
+      "router_level_deps": [],
+      "transitive_deps": [
+        "require_admin",
+        "require_key"
+      ],
+      "gate_level": "admin",
+      "gated": true
+    }
+  ],
+  "summary": {
+    "total": 25,
+    "mutating": 10,
+    "ungated_mutating": 0,
+    "ungated_gets": 2,
+    "gates_verified": true
+  },
+  "gate_impl": {
+    "require_admin": {
+      "found": true,
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/auth.py",
+      "line": 236,
+      "expected_role": "admin",
+      "expected_literal_present": true,
+      "structural_role_guard": true,
+      "raises_403": true,
+      "verified": true
+    },
+    "require_worker": {
+      "found": true,
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/auth.py",
+      "line": 245,
+      "expected_role": "worker",
+      "expected_literal_present": true,
+      "structural_role_guard": true,
+      "raises_403": true,
+      "verified": true
+    },
+    "require_client": {
+      "found": true,
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/auth.py",
+      "line": 254,
+      "expected_role": "worker",
+      "expected_literal_present": true,
+      "structural_role_guard": true,
+      "raises_403": true,
+      "verified": true
+    },
+    "require_key": {
+      "found": true,
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/auth.py",
+      "line": 220,
+      "bearer_scheme": true,
+      "delegates_to_keyring": true,
+      "verified": true
+    },
+    "KeyRing.authenticate": {
+      "found": true,
+      "file": "/home/teycir/ResearchAIRedTeam/julep/julep/server/auth.py",
+      "line": 152,
+      "constant_time_compare": true,
+      "verified": true
+    }
+  }
+}

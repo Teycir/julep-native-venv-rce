@@ -1,0 +1,29 @@
+# route inventory @ fc74d079a18c8124b2627ca4717f5a9c269267db (clean)
+
+HEAD   /artifacts/{sha256}          head_blob                deps=require_client gate=client_or_admin
+PUT    /artifacts/{sha256}          put_blob                 deps=require_admin gate=admin
+GET    /deployments                 list_deployments         deps=require_client gate=client_or_admin
+POST   /deployments                 activate_deployment      deps=require_admin gate=admin
+GET    /health                      health                   deps=- gate=NONE
+GET    /health/ready                health_ready             deps=- gate=NONE
+GET    /ready                       ready                    deps=require_client gate=client_or_admin
+GET    /releases                    list_releases            deps=require_client gate=client_or_admin
+POST   /releases                    publish_release          deps=require_admin gate=admin
+GET    /releases/{release_hash}     get_release              deps=require_client gate=client_or_admin
+GET    /runs                        list_runs                deps=require_client gate=client_or_admin
+POST   /runs                        start_run                deps=require_client gate=client_or_admin
+GET    /runs/{run_id}               get_run                  deps=require_client gate=client_or_admin
+POST   /runs/{run_id}/cancel        cancel_run               deps=require_client gate=client_or_admin
+GET    /runs/{run_id}/events        run_events               deps=require_client gate=client_or_admin
+GET    /runs/{run_id}/gates         get_open_gates           deps=require_client gate=client_or_admin
+GET    /runs/{run_id}/result        run_result               deps=require_client gate=client_or_admin
+POST   /runs/{run_id}/signals/human signal_human_gate        deps=require_client gate=client_or_admin
+POST   /runs/{run_id}/terminate     terminate_run            deps=require_client gate=client_or_admin
+GET    /runs/{run_id}/values/{value_ref} get_run_value            deps=require_client gate=client_or_admin
+GET    /secrets                     list_secrets             deps=require_admin gate=admin
+DELETE /secrets/{name}              delete_secret            deps=require_admin gate=admin
+PUT    /secrets/{name}              put_secret               deps=require_admin gate=admin
+POST   /secrets/{name}/archive      archive_secret           deps=require_admin gate=admin
+GET    /secrets/{name}/value        get_secret_value         deps=require_worker gate=worker
+
+total=25 mutating=10 ungated_mutating=0

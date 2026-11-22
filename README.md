@@ -2,22 +2,37 @@
 
 Coordinated vulnerability disclosure for `julep-ai/julep`.
 
+## Executive summary
+
 The `native_venv` execution tier runs bundle-supplied source with
 `exec(source, {"pure": pure})` in a host subprocess. A signed bundle containing
-`import os` / `import subprocess` achieves host RCE and data exfiltration
-(RT-01, High 8.8). The remediation proposed in `julep-ai/julep#1632` — a
-tier-aware import denylist plus reflection bans — is bypassable via
+`import os` / `import subprocess` achieves host RCE and data exfiltration —
+verified end-to-end with a live listener (`poc/rt01/`, `evidence/rt01/`).
+
+**RT-01 — production finding, High 7.2** (`AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`).
+The authorization analysis shows exploitation requires high privileges: bundle
+publication routes are `require_admin`, and native execution additionally
+requires an Ed25519 signature from a worker-allowlisted operator key plus a
+`JULEP_PURE_NATIVE_DEPS` grant. Deployments that issue admin keys to tenants or
+expose the signing key collapse this toward `PR:L` (8.8).
+
+**RT-02 / RT-03 — remediation bypasses, not independent vulnerabilities.** The
+hardening proposed in upstream issue #1632 (tier-aware import denylist +
+reflection bans, restricted `__builtins__`) is bypassable via
 `operator.attrgetter("__globals__")(pure)["__builtins__"]` and
-`().__class__.__base__.__subclasses__()` (RT-02, RT-03). The fully layered
-variant (B2) blocks the tested payloads but also blocks legitimate
-`import packaging` — the exact capability the tier exists to provide — so
-in-process Python restrictions are not a security boundary (RT-04).
+`().__class__.__base__.__subclasses__()` → `sys.modules["os"]`. These target a
+*proposed* fix, not deployed code; they inherit RT-01's prerequisites.
+
+**RT-04 — informational.** The fully layered variant (B2) blocks the tested
+payloads but also blocks legitimate `import packaging` — the exact capability
+the native tier exists to provide. In-process Python restrictions are not a
+security boundary; the fix is OS-level sandboxing.
 
 | ID | Severity | CVSS 3.1 | CWE | Title |
 |----|----------|----------|-----|-------|
-| RT-01 | High | 8.8 | CWE-94 | `native_venv` tier executes arbitrary bundle source → host RCE |
-| RT-02 | High | — | CWE-693 | Tier-aware import denylist bypassed via `attrgetter`/`__globals__` |
-| RT-03 | High | — | CWE-693 | Restricted `__builtins__` bypassed via `__subclasses__` → `sys.modules["os"]` |
+| RT-01 | High | 7.2 | CWE-94 | `native_venv` tier executes arbitrary bundle source → host RCE |
+| RT-02 | Remediation bypass | — | CWE-693 | Tier-aware import denylist bypassed via `attrgetter`/`__globals__` |
+| RT-03 | Remediation bypass | — | CWE-693 | Restricted `__builtins__` bypassed via `__subclasses__` → `sys.modules["os"]` |
 | RT-04 | Informational | — | — | Layered controls block payloads but break legitimate `import packaging` |
 
 Public reference: [GHSA-rhfp-jw6w-wrqq](https://github.com/julep-ai/julep/security/advisories/GHSA-rhfp-jw6w-wrqq) · upstream issue `julep-ai/julep#1632`
@@ -26,6 +41,7 @@ Public reference: [GHSA-rhfp-jw6w-wrqq](https://github.com/julep-ai/julep/securi
 
 - [`report-rt01.md`](report-rt01.md) — original finding: `native_venv` escape, verified with live exfiltration (`poc/rt01/`, `evidence/rt01/`)
 - [`report-hardening-verification.md`](report-hardening-verification.md) — verification/addendum: proposed hardening variants A/B1/B2, bypass payloads, patch diffs, 14-assertion run matrix (`poc/hardening/`, `evidence/hardening/`)
+- [`evidence/authz/authorization_analysis.md`](evidence/authz/authorization_analysis.md) — supporting appendix: route authz inventory, authentication decisions, signature verification, attacker-prerequisite analysis
 
 ## Affected
 
@@ -43,7 +59,36 @@ SHA256 manifests, timestamps, patch diffs, runnable exploit scripts).
 |---|---|
 | 2026-11-21 | RT-01 finding verified in local authorised lab |
 | 2026-11-22 | Hardening verification engagement: variants A/B1/B2 implemented, bypass matrix executed |
+| 2026-11-22 | Authorization analysis: route inventory, auth decisions, signature chain, native-grant binding |
 | pending | Vendor disclosure / CVE assignment |
+
+## Authorization analysis — attacker prerequisites
+
+The chain `external user → API → bundle publication → signature verification →
+native grant → worker execution` was tested at four levels:
+
+1. **Structural AST inventory** (`poc/authz/route_authz_check.py`) — all 25
+   routes resolved transitively; 10 mutating, all gated, 0 ungated.
+2. **Production application** (`poc/authz/test_production_app_authz.py`) — the
+   real app built via `julep.server.app.create_app` (not a re-assembled
+   FastAPI). All 25 routes' dependant trees asserted to carry the *exact*
+   expected gate, and 125 HTTP checks confirm 401/403/pass per role
+   (`evidence/authz/production_app_authz.stdout`). Result: **PASS**.
+3. **Authentication decisions** (`poc/authz/test_auth_decisions.py`) — 23/23:
+   admin/client/worker/missing/bad across all three gates.
+4. **Signature + native-grant binding** (`poc/authz/bundle_signature_proof.py`,
+   `poc/authz/native_grant_binding.py`) — `executorTier:"native"` lives inside
+   the signed manifest bytes, so it cannot be flipped post-signing; the
+   worker-side `native_grant` (`JULEP_PURE_NATIVE_DEPS`) is operator config,
+   enforced at resolution. 7/7 binding assertions pass, including the
+   env-var grant path.
+
+Conclusion: ordinary client credentials cannot publish bundles or reach
+mutating admin routes; exploitation needs admin API access or operator
+signing-key compromise. This is why RT-01 is scored `PR:H` (7.2), not `PR:L`
+(8.8). Remaining deployment-specific unknowns: whether a given deployment
+delegates admin keys to tenants, and whether a third party can obtain an
+accepted signature.
 
 ## Recommendation
 
@@ -58,10 +103,18 @@ not a name-only worker allowlist.
 
 ## Integrity
 
-`SHA256SUMS.txt` covers every file in this repository (57 files, verified with
-`sha256sum -c`). The per-engagement manifests inside `evidence/` are the
-original artifacts as generated during testing; their paths are relative to the
-engagement directories, not this repo root.
+`SHA256SUMS.txt` covers every tracked file in this repository except itself
+(a manifest cannot contain its own hash) — verified with
+`sha256sum -c SHA256SUMS.txt`. It is generated with:
+
+```bash
+find . -type f ! -path './.git/*' ! -name 'SHA256SUMS.txt' | sort | xargs sha256sum > SHA256SUMS.txt
+```
+
+`README.md` and `SHA256SUMS-hardening.txt` are included. The per-engagement
+manifests inside `evidence/` are the original artifacts as generated during
+testing; their paths are relative to the engagement directories, not this repo
+root.
 
 ## Reproduction environment
 
@@ -76,27 +129,6 @@ Full environment capture: [`evidence/hardening/environment.txt`](evidence/harden
 Hardening run matrix (14 cases, expected outcomes + raw proofs): [`evidence/hardening/matrix.json`](evidence/hardening/matrix.json), driver [`evidence/hardening/run_matrix.sh`](evidence/hardening/run_matrix.sh)
 Patch application: diffs in [`poc/hardening/patches/`](poc/hardening/patches/), resulting files in [`poc/hardening/patched/`](poc/hardening/patched/)
 
-## Open question for triage — attacker prerequisites
-
-The PoC calls `resolve_and_register(..., allowed_signers=[pub],
-native_grant=[PURE_NAME])` with a lab-generated Ed25519 key. What is **not yet
-demonstrated** is the real-world authorization chain:
-
-`external user → API → bundle publication → signature verification → native grant → worker execution`
-
-Specifically unresolved:
-
-1. Who can publish a signed bundle in a real deployment (ordinary user vs.
-   administrator-only)?
-2. Can a third-party bundle author obtain an accepted signature?
-3. Can the attacker influence the `native` tier / `JULEP_PURE_NATIVE_DEPS`, or is
-   it strictly operator-controlled?
-4. Does the deployed worker actually execute the resulting pure?
-
-If only a fully trusted administrator can sign and grant `native`, the vendor
-could argue host execution is expected behaviour. Demonstrating traversal of
-this chain with ordinary-user privileges is the highest-value remaining work.
-
 ## Layout
 
 ```
@@ -104,7 +136,10 @@ report-rt01.md                     RT-01 original report
 report-hardening-verification.md   RT-02/03/04 verification report
 poc/rt01/                          original native_venv RCE PoC
 poc/hardening/                     hardening patches, bypass payloads, run matrix
+poc/authz/                         authorization/signature assessment scripts
 evidence/rt01/                     RT-01 raw transcripts, bundle manifest, hashes
 evidence/hardening/                verification logs, matrix.json, timestamps
-SHA256SUMS-hardening.txt           integrity manifest for hardening artifacts
+evidence/authz/                    route matrix, live wiring + signature proofs
+SHA256SUMS.txt                     repo-wide integrity manifest
+SHA256SUMS-hardening.txt           original hardening-engagement manifest
 ```

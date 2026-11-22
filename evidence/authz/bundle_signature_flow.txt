@@ -1,0 +1,19 @@
+source: /home/teycir/ResearchAIRedTeam/julep
+commit: fc74d079a18c8124b2627ca4717f5a9c269267db
+
+file                                          line   status     label
+julep/server/routes/releases.py               101    found      POST /releases handler
+julep/server/routes/releases.py               17     found      stores prebuilt release bytes
+julep/server/routes/releases.py               103    found      admin gate on publication
+julep/bundle.py                               223    found      CLI bundle publisher
+julep/bundle.py                               91     found      signing key source
+julep/deploy.py                               575    found      deploy path calls publisher
+julep/worker_store.py                         229    found      worker-side registration
+julep/worker_store.py                         75     found      allowed signer config
+julep/worker_store.py                         241    found      native grant config
+julep/cli/_resolve_child.py                   27     found      dev-only local key
+
+publish_release line: 101
+POST /releases signs bundle: False (expected False)
+missing symbols: 0
+RESULT: PASS

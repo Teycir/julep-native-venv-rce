@@ -1,0 +1,265 @@
+{
+  "nodes": [
+    "activate_deployment",
+    "archive_secret",
+    "cancel_run",
+    "delete_secret",
+    "get_open_gates",
+    "get_release",
+    "get_run",
+    "get_run_value",
+    "get_secret_value",
+    "head_blob",
+    "health",
+    "health_ready",
+    "list_deployments",
+    "list_releases",
+    "list_runs",
+    "list_secrets",
+    "publish_release",
+    "put_blob",
+    "put_secret",
+    "ready",
+    "require_admin",
+    "require_client",
+    "require_key",
+    "require_worker",
+    "run_events",
+    "run_result",
+    "signal_human_gate",
+    "start_run",
+    "terminate_run"
+  ],
+  "edges": [
+    {
+      "from": "activate_deployment",
+      "to": "require_admin",
+      "kind": "route_param"
+    },
+    {
+      "from": "archive_secret",
+      "to": "require_admin",
+      "kind": "route_param"
+    },
+    {
+      "from": "cancel_run",
+      "to": "require_client",
+      "kind": "route_param"
+    },
+    {
+      "from": "delete_secret",
+      "to": "require_admin",
+      "kind": "route_param"
+    },
+    {
+      "from": "get_open_gates",
+      "to": "require_client",
+      "kind": "route_param"
+    },
+    {
+      "from": "get_release",
+      "to": "require_client",
+      "kind": "route_param"
+    },
+    {
+      "from": "get_run",
+      "to": "require_client",
+      "kind": "route_param"
+    },
+    {
+      "from": "get_run_value",
+      "to": "require_client",
+      "kind": "route_param"
+    },
+    {
+      "from": "get_secret_value",
+      "to": "require_worker",
+      "kind": "route_param"
+    },
+    {
+      "from": "head_blob",
+      "to": "require_client",
+      "kind": "route_param"
+    },
+    {
+      "from": "list_deployments",
+      "to": "require_client",
+      "kind": "route_param"
+    },
+    {
+      "from": "list_releases",
+      "to": "require_client",
+      "kind": "route_param"
+    },
+    {
+      "from": "list_runs",
+      "to": "require_client",
+      "kind": "route_param"
+    },
+    {
+      "from": "list_secrets",
+      "to": "require_admin",
+      "kind": "route_param"
+    },
+    {
+      "from": "publish_release",
+      "to": "require_admin",
+      "kind": "route_param"
+    },
+    {
+      "from": "put_blob",
+      "to": "require_admin",
+      "kind": "route_param"
+    },
+    {
+      "from": "put_secret",
+      "to": "require_admin",
+      "kind": "route_param"
+    },
+    {
+      "from": "ready",
+      "to": "require_client",
+      "kind": "route_param"
+    },
+    {
+      "from": "require_admin",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_admin",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_admin",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_admin",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_admin",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_admin",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_admin",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_client",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_client",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_client",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_client",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_client",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_client",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_client",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_client",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_client",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_client",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_client",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_client",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_client",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_client",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_client",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "require_worker",
+      "to": "require_key",
+      "kind": "dependency"
+    },
+    {
+      "from": "run_events",
+      "to": "require_client",
+      "kind": "route_param"
+    },
+    {
+      "from": "run_result",
+      "to": "require_client",
+      "kind": "route_param"
+    },
+    {
+      "from": "signal_human_gate",
+      "to": "require_client",
+      "kind": "route_param"
+    },
+    {
+      "from": "start_run",
+      "to": "require_client",
+      "kind": "route_param"
+    },
+    {
+      "from": "terminate_run",
+      "to": "require_client",
+      "kind": "route_param"
+    }
+  ]
+}

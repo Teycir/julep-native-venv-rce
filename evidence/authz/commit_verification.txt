@@ -1,0 +1,5 @@
+source: /home/teycir/ResearchAIRedTeam/julep
+HEAD: fc74d079a18c8124b2627ca4717f5a9c269267db
+expected: fc74d079a18c8124b2627ca4717f5a9c269267db
+match: True
+dirty: False

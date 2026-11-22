@@ -1,0 +1,9 @@
+PASS  1. signed bundle + native grant resolves                          registered=['poc.native_binding.v1']
+PASS  2. unsigned native bundle rejected                                bundle is unsigned: no signature reference provided
+PASS  3. tampered manifest rejected                                     bundle signature does not match requested bundle hash
+PASS  4a. empty native grant rejected                                   bundle pure 'poc.native_binding.v1' requests native dependency tier, but this worker has not granted it via JULEP_PURE_NATIVE_DEPS
+PASS  4b. grant names a different pure rejected                         bundle pure 'poc.native_binding.v1' requests native dependency tier, but this worker has not granted it via JULEP_PURE_NATIVE_DEPS
+PASS  5. non-allowlisted signer rejected                                bundle signer is not in the allowlist: 2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12
+PASS  6. JULEP_PURE_NATIVE_DEPS env grant resolves                      registered=['poc.native_binding.v1']
+
+RESULT: PASS (7/7 assertions)

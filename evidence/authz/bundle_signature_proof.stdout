@@ -1,0 +1,11 @@
+PASS  signature object shape (ed25519, bundleHash, publicKey, sig)  ok
+PASS  worker _verify_signature accepts authentic manifest           accepted
+PASS  worker _verify_signature rejects tampered manifest            rejected: bundle signature verification failed
+PASS  worker _verify_signature rejects wrong public key             rejected: bundle signature verification failed
+PASS  resolve_and_register rejects unsigned bundle                  rejected: bundle is unsigned: no signature reference provided
+PASS  resolve_and_register rejects signer outside allowlist         rejected: bundle signer is not in the allowlist: d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737
+PASS  resolve_and_register accepts allowlisted signer's signature   crypto accepted, manifest validation stopped it: bundle manifest artifactHash must equal sha256:artifactComponents
+PASS  allowlist normalises hex and rejects non-hex                  ok
+PASS  full publish_bundle -> worker verify                          published+verified bundleHash=f214e6c3981fe576…
+
+RESULT: PASS (9/9 assertions)

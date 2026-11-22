@@ -1,0 +1,31 @@
+/home/teycir/.local/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+PASS  direct require_admin    admin    expected=200 got=200
+PASS  direct require_admin    client   expected=403 got=403
+PASS  direct require_admin    worker   expected=403 got=403
+PASS  direct require_admin    missing  expected=401 got=401
+PASS  direct require_admin    bad      expected=401 got=401
+PASS  direct require_client   client   expected=200 got=200
+PASS  direct require_client   admin    expected=200 got=200
+PASS  direct require_client   worker   expected=403 got=403
+PASS  direct require_client   missing  expected=401 got=401
+PASS  direct require_worker   worker   expected=200 got=200
+PASS  direct require_worker   client   expected=403 got=403
+PASS  direct require_worker   admin    expected=403 got=403
+PASS  http   /gate/admin      admin    expected=200 got=200
+PASS  http   /gate/admin      client   expected=403 got=403
+PASS  http   /gate/admin      worker   expected=403 got=403
+PASS  http   /gate/admin      missing  expected=401 got=401
+PASS  http   /gate/admin      bad      expected=401 got=401
+PASS  http   /gate/client     client   expected=200 got=200
+PASS  http   /gate/client     admin    expected=200 got=200
+PASS  http   /gate/client     worker   expected=403 got=403
+PASS  http   /gate/worker     worker   expected=200 got=200
+PASS  http   /gate/worker     client   expected=403 got=403
+PASS  http   /gate/worker     admin    expected=403 got=403
+http_layer: fastapi.TestClient
+cases: 23 passed: 23 failed: 0
+{
+  "http_layer": "fastapi.TestClient",
+  "failed": []
+}
