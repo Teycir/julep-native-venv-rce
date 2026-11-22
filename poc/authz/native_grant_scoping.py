@@ -1,30 +1,24 @@
 #!/usr/bin/env python3
-"""Test whether the native grant is bound to bundle *content* or only to the
-pure *name* across independent workers.
+"""Process-level test of native-grant scoping across worker processes.
 
-The native grant (``JULEP_PURE_NATIVE_DEPS`` / ``native_grant``) is a list of
-pure names.  ``worker_store.resolve_and_register`` checks ``verified_pure.name
-in native_grants`` — never the source hash or signer identity.  On a *warm*
-worker the registry pins name->source_hash and rejects disagreeing content,
-but on a *fresh* worker (new process, new Registry, empty store) nothing ties
-the granted name to previously-seen content.
+``JULEP_PURE_NATIVE_DEPS`` / ``native_grant`` authorizes pure *names*.  This
+test uses real OS subprocesses, a shared content-addressed artifact store, and
+two distinct allowlisted Ed25519 signing keys:
 
-Scenario modeled: an operator grants ``acme.geo.v1`` native tier for a
-legitimate dependency-bearing pure.  Two fresh workers receive two different,
-both-validly-signed bundles that claim the same pure name.
+  * bundle X is signed by key A;
+  * bundle Y is signed by key B;
+  * both claim the same granted pure name;
+  * bundle Z is unsigned.
 
-  1. Worker A resolves bundle X (source A) -> accepted.
-  2. Worker B (fresh) resolves bundle Y (source B, same name, same grant,
-     valid signature) -> accepted: different content under the granted name.
-  3. Worker A, now warm, attempts bundle Y -> rejected by the name->hash pin.
-  4. Worker B attempts an UNSIGNED bundle Z with the same name -> rejected:
-     the grant does not bypass signature verification.
-
-Assertions 1-3 demonstrate the grant is name-scoped, not content-scoped,
-across the fleet; assertion 4 confirms the signature gate still applies.
+Worker A resolves X then Y in one process: X is accepted and Y is rejected by
+the process-local name->source_hash pin.  Worker B resolves Y then Z: Y is
+accepted under the same granted name and Z is rejected as unsigned.  Worker C
+is a fresh replacement process and accepts Y, showing that the hash pin is not
+durable across worker restart/replacement.  Worker D has only signer A in
+``JULEP_BUNDLE_ALLOWED_SIGNERS`` and rejects signer-B bundle Y.
 
 Run:  python3 native_grant_scoping.py --src /path/to/julep
-Exit 0 only if all cases behave as asserted.
+Exit 0 only if all assertions hold.
 """
 
 from __future__ import annotations
@@ -32,13 +26,17 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 PURE_NAME = "acme.geo.v1"
 SEED_A = bytes.fromhex("42" * 32)
+SEED_B = bytes.fromhex("77" * 32)
 
-SOURCE_A = f'''# /// script
+SOURCE_X = f'''# /// script
 # dependencies = ["packaging==24.2"]
 # requires-python = ">=3.14"
 # ///
@@ -46,10 +44,10 @@ import json
 
 @pure("{PURE_NAME}")
 def probe(value, **kwargs):
-    return {{"variant": "A", "value": value}}
+    return {{"variant": "X", "value": value}}
 '''
 
-SOURCE_B = f'''# /// script
+SOURCE_Y = f'''# /// script
 # dependencies = ["packaging==24.2"]
 # requires-python = ">=3.14"
 # ///
@@ -57,7 +55,7 @@ import json
 
 @pure("{PURE_NAME}")
 def probe(value, **kwargs):
-    return {{"variant": "B", "value": value}}
+    return {{"variant": "Y", "value": value}}
 '''
 
 SOURCE_Z = f'''# /// script
@@ -72,40 +70,30 @@ def probe(value, **kwargs):
 '''
 
 
-class DictStore:
-    """Minimal ArtifactStore: resolve_and_register only calls .get()."""
-
-    def __init__(self) -> None:
-        self.blobs: dict[str, bytes] = {}
-
-    def put(self, data: bytes) -> str:
-        digest = hashlib.sha256(data).hexdigest()
-        self.blobs[digest] = data
-        return digest
-
-    def get(self, digest: str) -> bytes:
-        return self.blobs[digest]
+def _text_hash(source: str) -> str:
+    return "pure:" + hashlib.sha256(source.encode("utf-8")).hexdigest()[:16]
 
 
-def _pub(priv) -> str:
+def _pub(seed: bytes) -> str:
     from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-    return priv.public_key().public_bytes(
+    return Ed25519PrivateKey.from_private_bytes(seed).public_key().public_bytes(
         encoding=serialization.Encoding.Raw,
         format=serialization.PublicFormat.Raw,
     ).hex()
 
 
-def build_bundle(store: DictStore, source: str, *, sign: bool = True):
-    """Return (bundle_hash, signature_digest|None)."""
+def build_bundle(store, source: str, *, seed: bytes | None):
+    """Build and store a native-tier bundle; return (bundle, signature, pub)."""
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
     from julep.bundle import ABI_PYTHON_SOURCE_JSON_V1
     from julep.ir import canonical_json
-    from julep.registry import _text_hash
+    from julep.registry import _text_hash as registry_text_hash
 
     source_digest = store.put(source.encode("utf-8"))
-    source_hash = _text_hash(source)
+    source_hash = registry_text_hash(source)
     flow_digest = store.put(canonical_json({"poc": "flow"}).encode("utf-8"))
     components_digest = store.put(
         canonical_json({"pureSourceHashes": {PURE_NAME: source_hash}}).encode("utf-8")
@@ -120,7 +108,6 @@ def build_bundle(store: DictStore, source: str, *, sign: bool = True):
         "requiresPython": ">=3.14",
         "executorTier": "native",
     }
-
     manifest = {
         "artifactHash": f"sha256:{components_digest}",
         "artifactComponents": components_digest,
@@ -131,11 +118,11 @@ def build_bundle(store: DictStore, source: str, *, sign: bool = True):
     manifest_bytes = canonical_json(manifest).encode("utf-8")
     bundle_hash = store.put(manifest_bytes)
 
-    pub = _pub(Ed25519PrivateKey.from_private_bytes(SEED_A))
-    if not sign:
-        return bundle_hash, None
+    if seed is None:
+        return bundle_hash, None, None
 
-    priv = Ed25519PrivateKey.from_private_bytes(SEED_A)
+    priv = Ed25519PrivateKey.from_private_bytes(seed)
+    pub = _pub(seed)
     signature = {
         "algo": "ed25519",
         "bundleHash": bundle_hash,
@@ -143,101 +130,282 @@ def build_bundle(store: DictStore, source: str, *, sign: bool = True):
         "sig": priv.sign(manifest_bytes).hex(),
     }
     signature_digest = store.put(canonical_json(signature).encode("utf-8"))
-    return bundle_hash, signature_digest
+    return bundle_hash, signature_digest, pub
 
 
-def resolve(store, bundle_hash, signature_digest, registry):
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+def worker_main(args: argparse.Namespace) -> int:
+    """Run as one worker process: resolve a request sequence in one Registry."""
+    sys.path.insert(0, str(Path(args.src).resolve()))
 
-    from julep.registry import Registry  # noqa: F401  (documents the type)
+    from julep.artifact_store import LocalDirArtifactStore
+    from julep.registry import Registry
     from julep.worker_store import resolve_and_register
 
-    pub_a = _pub(Ed25519PrivateKey.from_private_bytes(SEED_A))
-    return resolve_and_register(
-        store,
-        bundle_hash,
-        signature_digest=signature_digest,
-        allowed_signers=[pub_a],
-        native_grant=[PURE_NAME],
-        registry=registry,
+    store = LocalDirArtifactStore(args.store)
+    registry = Registry()
+    requests = json.loads(Path(args.requests).read_text(encoding="utf-8"))
+    pid = os.getpid()
+
+    for request in requests:
+        try:
+            result = resolve_and_register(
+                store,
+                request["bundle"],
+                signature_digest=request.get("signature"),
+                allowed_signers=None,
+                native_grant=None,
+                registry=registry,
+            )
+            payload = {
+                "label": request["label"],
+                "ok": True,
+                "pid": pid,
+                "registered": result.get("registered", {}),
+                "error": None,
+            }
+        except Exception as exc:  # noqa: BLE001 - report exact worker outcome
+            payload = {
+                "label": request["label"],
+                "ok": False,
+                "pid": pid,
+                "registered": {},
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+        print("WORKER_RESULT " + json.dumps(payload, sort_keys=True), flush=True)
+    return 0
+
+
+def _worker_results(proc: subprocess.CompletedProcess[str]) -> list[dict]:
+    results = []
+    for line in proc.stdout.splitlines():
+        if line.startswith("WORKER_RESULT "):
+            results.append(json.loads(line.removeprefix("WORKER_RESULT ")))
+    return results
+
+
+def _result_by_label(results: list[dict], label: str) -> dict | None:
+    for result in results:
+        if result.get("label") == label:
+            return result
+    return None
+
+
+def _launch_worker(
+    *,
+    script: Path,
+    src: Path,
+    store_root: Path,
+    requests_dir: Path,
+    name: str,
+    requests: list[dict],
+    allowed_signers: list[str],
+) -> tuple[subprocess.CompletedProcess[str], list[dict]]:
+    request_path = requests_dir / f"{name}.json"
+    request_path.write_text(json.dumps(requests), encoding="utf-8")
+
+    env = os.environ.copy()
+    env["JULEP_BUNDLE_ALLOWED_SIGNERS"] = ",".join(allowed_signers)
+    env["JULEP_PURE_NATIVE_DEPS"] = PURE_NAME
+
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "--src",
+            str(src),
+            "--worker",
+            "--store",
+            str(store_root),
+            "--requests",
+            str(request_path),
+        ],
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
     )
+    return proc, _worker_results(proc)
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--src", required=True)
-    args = parser.parse_args()
+def orchestrator_main(args: argparse.Namespace) -> int:
     src = Path(args.src).resolve()
+    script = Path(__file__).resolve()
     sys.path.insert(0, str(src))
 
-    from julep.registry import Registry
-    from julep.worker_store import BundleResolutionError
+    from julep.artifact_store import LocalDirArtifactStore
 
     checks: list[tuple[str, bool, str]] = []
 
     def check(label: str, ok: bool, detail: str) -> None:
         checks.append((label, ok, detail))
-        print(f"{'PASS' if ok else 'FAIL'}  {label:<64}  {detail}")
+        print(f"{'PASS' if ok else 'FAIL'}  {label:<68}  {detail}")
 
-    # Shared artifact store (as in a real deployment: one store, many workers).
-    store = DictStore()
-    bh_x, sd_x = build_bundle(store, SOURCE_A)
-    bh_y, sd_y = build_bundle(store, SOURCE_B)
-    bh_z, sd_z = build_bundle(store, SOURCE_Z, sign=False)
+    with tempfile.TemporaryDirectory(prefix="julep-native-grant-scoping-") as td:
+        root = Path(td)
+        store_root = root / "artifact-store"
+        requests_dir = root / "requests"
+        requests_dir.mkdir()
+        store = LocalDirArtifactStore(store_root)
 
-    # 1. Worker A (fresh) resolves bundle X.
-    reg_a = Registry()
-    try:
-        result = resolve(store, bh_x, sd_x, reg_a)
-        check("1. worker A accepts bundle X under granted name",
-              PURE_NAME in result["registered"], f"registered={sorted(result['registered'])}")
-    except Exception as exc:  # noqa: BLE001
-        check("1. worker A accepts bundle X under granted name", False,
-              f"{type(exc).__name__}: {exc}")
+        pub_a = _pub(SEED_A)
+        pub_b = _pub(SEED_B)
+        bh_x, sd_x, signed_pub_x = build_bundle(store, SOURCE_X, seed=SEED_A)
+        bh_y, sd_y, signed_pub_y = build_bundle(store, SOURCE_Y, seed=SEED_B)
+        bh_z, sd_z, _ = build_bundle(store, SOURCE_Z, seed=None)
+        assert sd_z is None
+        assert signed_pub_x == pub_a and signed_pub_y == pub_b and pub_a != pub_b
 
-    # 2. Worker B (fresh registry, same grant) resolves bundle Y — DIFFERENT
-    #    signed content under the same granted pure name.
-    reg_b = Registry()
-    try:
-        result = resolve(store, bh_y, sd_y, reg_b)
-        check("2. fresh worker B accepts bundle Y (same name, diff content)",
-              PURE_NAME in result["registered"], f"registered={sorted(result['registered'])}")
-    except Exception as exc:  # noqa: BLE001
-        check("2. fresh worker B accepts bundle Y (same name, diff content)", False,
-              f"{type(exc).__name__}: {exc}")
+        hash_x = _text_hash(SOURCE_X)
+        hash_y = _text_hash(SOURCE_Y)
+        both_signers = [pub_a, pub_b]
 
-    # 3. Worker A is now warm: name->hash pinned to X. Bundle Y must be
-    #    rejected even though it is validly signed and the grant covers the name.
-    try:
-        resolve(store, bh_y, sd_y, reg_a)
-        check("3. warm worker A rejects bundle Y (hash pin)", False, "was accepted")
-    except BundleResolutionError as exc:
-        check("3. warm worker A rejects bundle Y (hash pin)",
-              "already baked" in str(exc) or "disagrees" in str(exc), str(exc))
-    except Exception as exc:  # noqa: BLE001
-        check("3. warm worker A rejects bundle Y (hash pin)", False,
-              f"{type(exc).__name__}: {exc}")
+        proc_a, results_a = _launch_worker(
+            script=script,
+            src=src,
+            store_root=store_root,
+            requests_dir=requests_dir,
+            name="worker-a",
+            requests=[
+                {"label": "A1.bundle_x", "bundle": bh_x, "signature": sd_x},
+                {"label": "A2.bundle_y", "bundle": bh_y, "signature": sd_y},
+            ],
+            allowed_signers=both_signers,
+        )
+        proc_b, results_b = _launch_worker(
+            script=script,
+            src=src,
+            store_root=store_root,
+            requests_dir=requests_dir,
+            name="worker-b",
+            requests=[
+                {"label": "B1.bundle_y", "bundle": bh_y, "signature": sd_y},
+                {"label": "B2.unsigned_z", "bundle": bh_z, "signature": sd_z},
+            ],
+            allowed_signers=both_signers,
+        )
+        proc_c, results_c = _launch_worker(
+            script=script,
+            src=src,
+            store_root=store_root,
+            requests_dir=requests_dir,
+            name="worker-c",
+            requests=[{"label": "C1.bundle_y", "bundle": bh_y, "signature": sd_y}],
+            allowed_signers=both_signers,
+        )
+        proc_d, results_d = _launch_worker(
+            script=script,
+            src=src,
+            store_root=store_root,
+            requests_dir=requests_dir,
+            name="worker-d",
+            requests=[{"label": "D1.bundle_y", "bundle": bh_y, "signature": sd_y}],
+            allowed_signers=[pub_a],
+        )
 
-    # 4. Worker B attempts unsigned bundle Z with the same granted name.
-    try:
-        resolve(store, bh_z, sd_z, reg_b)
-        check("4. unsigned bundle Z rejected despite grant", False, "was accepted")
-    except BundleResolutionError as exc:
-        check("4. unsigned bundle Z rejected despite grant", "unsigned" in str(exc), str(exc))
-    except Exception as exc:  # noqa: BLE001
-        check("4. unsigned bundle Z rejected despite grant", False,
-              f"{type(exc).__name__}: {exc}")
+        worker_runs = {
+            "A": (proc_a, results_a),
+            "B": (proc_b, results_b),
+            "C": (proc_c, results_c),
+            "D": (proc_d, results_d),
+        }
+        for name, (proc, results) in worker_runs.items():
+            if proc.returncode != 0:
+                print(f"worker {name} stderr:\n{proc.stderr}", file=sys.stderr)
+
+        a1 = _result_by_label(results_a, "A1.bundle_x")
+        a2 = _result_by_label(results_a, "A2.bundle_y")
+        b1 = _result_by_label(results_b, "B1.bundle_y")
+        b2 = _result_by_label(results_b, "B2.unsigned_z")
+        c1 = _result_by_label(results_c, "C1.bundle_y")
+        d1 = _result_by_label(results_d, "D1.bundle_y")
+
+        def accepted(result: dict | None, expected_hash: str) -> tuple[bool, str]:
+            if result is None:
+                return False, "no worker result"
+            if not result.get("ok"):
+                return False, result.get("error") or "rejected"
+            registered = result.get("registered", {})
+            actual = registered.get(PURE_NAME)
+            return actual == expected_hash, f"registered={actual}"
+
+        ok, detail = accepted(a1, hash_x)
+        check("1. OS worker A accepts signer-A bundle X", ok, detail)
+
+        ok, detail = accepted(b1, hash_y)
+        check("2. OS worker B accepts signer-B bundle Y (same granted name)", ok, detail)
+
+        if a2 is None:
+            check("3. warm worker A rejects bundle Y (hash pin)", False, "no worker result")
+        else:
+            error = a2.get("error") or ""
+            check(
+                "3. warm worker A rejects bundle Y (hash pin)",
+                not a2.get("ok") and ("already baked" in error or "disagrees" in error),
+                error or "accepted",
+            )
+
+        if b2 is None:
+            check("4. worker B rejects unsigned bundle Z", False, "no worker result")
+        else:
+            error = b2.get("error") or ""
+            check(
+                "4. worker B rejects unsigned bundle Z",
+                not b2.get("ok") and "unsigned" in error,
+                error or "accepted",
+            )
+
+        ok, detail = accepted(c1, hash_y)
+        check("5. fresh replacement worker C accepts bundle Y", ok, detail)
+
+        if d1 is None:
+            check("6. worker D rejects signer-B bundle (allowlist only has A)", False,
+                  "no worker result")
+        else:
+            error = d1.get("error") or ""
+            check(
+                "6. worker D rejects signer-B bundle (allowlist only has A)",
+                not d1.get("ok") and "allowlist" in error,
+                error or "accepted",
+            )
+
+        pids = {
+            result.get("pid")
+            for results in (results_a, results_b, results_c, results_d)
+            for result in results
+        }
+        pids.discard(None)
+        check(
+            "7. resolutions ran in distinct OS worker processes",
+            len(pids) == 4,
+            f"pids={sorted(pids)}",
+        )
 
     print()
-    print("Structural result: the native grant binds a pure NAME, not a source")
-    print("hash or signer. Fresh workers accept any allowlisted-signer bundle")
-    print("claiming the granted name; warm workers pin name->hash per process.")
-    print("A fleet with mixed worker ages can run different code for the same")
-    print("granted pure name until every worker has resolved the same bundle.")
-    failed = [c for c in checks if not c[1]]
+    print("Structural result: the native grant binds a pure NAME across distinct")
+    print("worker processes and across distinct allowlisted signers; it does not")
+    print("bind source content. A warm process pins name->source_hash, but that")
+    print("pin is process-local: a fresh/replacement worker accepts whichever")
+    print("allowlisted-signer bundle its deployment resolves for the granted name.")
+    print("The signer allowlist and signature checks remain enforced independently.")
+    failed = [item for item in checks if not item[1]]
     print()
     print(f"RESULT: {'PASS' if not failed else 'FAIL'} ({len(checks) - len(failed)}/{len(checks)} assertions)")
     return 0 if not failed else 1
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--src", required=True)
+    parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--store", help=argparse.SUPPRESS)
+    parser.add_argument("--requests", help=argparse.SUPPRESS)
+    args = parser.parse_args()
+
+    if args.worker:
+        if not args.store or not args.requests:
+            parser.error("--worker requires --store and --requests")
+        return worker_main(args)
+    return orchestrator_main(args)
 
 
 if __name__ == "__main__":

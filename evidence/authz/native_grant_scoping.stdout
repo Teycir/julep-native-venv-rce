@@ -1,12 +1,16 @@
-PASS  1. worker A accepts bundle X under granted name                   registered=['acme.geo.v1']
-PASS  2. fresh worker B accepts bundle Y (same name, diff content)      registered=['acme.geo.v1']
-PASS  3. warm worker A rejects bundle Y (hash pin)                      pure 'acme.geo.v1' is already baked with hash pure:70945befb4527bc9, but bundle fb3954cacca9f182cf93ffb46fbe74b4819aa12aaae6a1de6557cf969ee3d5c8 provides pure:ecc8f11263c36770. Likely cause: a stale worker image (baked code is behind the bundle) or a stale bundle (published before the pure changed). Rebuild/redeploy the image, or republish.
-PASS  4. unsigned bundle Z rejected despite grant                       bundle is unsigned: no signature reference provided
+PASS  1. OS worker A accepts signer-A bundle X                              registered=pure:def46719a1e53482
+PASS  2. OS worker B accepts signer-B bundle Y (same granted name)          registered=pure:c1cff4dddab73009
+PASS  3. warm worker A rejects bundle Y (hash pin)                          BundleResolutionError: pure 'acme.geo.v1' is already baked with hash pure:def46719a1e53482, but bundle b6e98897c9aeca58a202fc0e1592d40b0f3ed83bb8db980af6fa421640810695 provides pure:c1cff4dddab73009. Likely cause: a stale worker image (baked code is behind the bundle) or a stale bundle (published before the pure changed). Rebuild/redeploy the image, or republish.
+PASS  4. worker B rejects unsigned bundle Z                                 BundleResolutionError: bundle is unsigned: no signature reference provided
+PASS  5. fresh replacement worker C accepts bundle Y                        registered=pure:c1cff4dddab73009
+PASS  6. worker D rejects signer-B bundle (allowlist only has A)            BundleResolutionError: bundle signer is not in the allowlist: c853ad0f0cd2b619aea92ceec4fd56a24d6499d584ce79257e45cfd8139b60a7
+PASS  7. resolutions ran in distinct OS worker processes                    pids=[60616, 60617, 60618, 60619]
 
-Structural result: the native grant binds a pure NAME, not a source
-hash or signer. Fresh workers accept any allowlisted-signer bundle
-claiming the granted name; warm workers pin name->hash per process.
-A fleet with mixed worker ages can run different code for the same
-granted pure name until every worker has resolved the same bundle.
+Structural result: the native grant binds a pure NAME across distinct
+worker processes and across distinct allowlisted signers; it does not
+bind source content. A warm process pins name->source_hash, but that
+pin is process-local: a fresh/replacement worker accepts whichever
+allowlisted-signer bundle its deployment resolves for the granted name.
+The signer allowlist and signature checks remain enforced independently.
 
-RESULT: PASS (4/4 assertions)
+RESULT: PASS (7/7 assertions)

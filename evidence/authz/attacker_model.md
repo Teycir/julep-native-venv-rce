@@ -59,11 +59,14 @@ were already published out-of-band by the CLI. There is no tenant-facing
 
 `native_grant` / `JULEP_PURE_NATIVE_DEPS` authorizes pure **names**, not
 content hashes (`worker_store.py:334-339` checks
-`verified_pure.name not in native_grants`). Mitigating factor: after first
-registration the registry pins `name → source_hash` and rejects drift
-(`worker_store.py:306-313`), so a granted name cannot silently change source
-on an already-initialized worker. On a *fresh* worker, whichever validly
-signed bundle resolves first claims the name — still gated by the signature.
+`verified_pure.name not in native_grants`). The process-level test
+`poc/authz/native_grant_scoping.py` (7/7 PASS) uses four real OS worker
+processes, two distinct allowlisted signers, and one shared artifact store:
+fresh processes accept different signed bundles under the same granted name;
+a warm process pins `name → source_hash` locally; a fresh replacement process
+accepts the second bundle; unsigned content and a signer outside the worker
+allowlist are still rejected. The pin is therefore process-local rather than
+a durable fleet-wide binding.
 
 ## 5. Verdict
 
@@ -73,13 +76,18 @@ worker.** Every route to `resolve_and_register`/`register_pure_from_source`
 terminates at either (a) an admin API call plus an operator-held signing key,
 or (b) operator-controlled worker env vars.
 
-The vulnerability is therefore best characterized as a **sandbox-boundary
-failure**, not an unauthenticated RCE:
+The vulnerability is therefore best characterized as a **candidate
+sandbox-boundary failure pending contract clarification**, not an
+unauthenticated RCE:
 
 - The `native_venv` tier's *purpose* is running dependency-bearing pures; its
   *actual* capability is unrestricted host `exec()`. Nothing in the tier
   confines execution to the declared PEP 723 dependency set — `import os`
   passes `_validate_portable_source` (RT-01).
+- Whether that capability is a contract violation depends on whether
+  `JULEP_PURE_NATIVE_DEPS` is intended to authorize exact signed source for
+  host execution or only dependency installation under tier-appropriate
+  validation (`security_contract.md`).
 - Any principal able to get *any* bundle signed for a granted pure name
   obtains full host RCE as the worker OS user — a much larger capability than
   "install declared dependencies" implies. This includes a compromised
@@ -94,7 +102,9 @@ failure**, not an unauthenticated RCE:
 
 **Honest severity statement:** in the default supported configuration,
 exploitation requires operator-level publication capability (`PR:H`, CVSS
-7.2). The finding's value is that the tier boundary is broken by design —
-recommendation stands: execute native pures under real OS isolation
+7.2 proposed upper bound; conservative `AV:L` reading 6.7 Medium). The
+finding's value is that the tier boundary is broken or dangerously broad by
+design — pending the vendor's contract clarification — and the recommendation
+stands: execute native pures under real OS isolation
 (container/namespace/seccomp/non-root/ro-fs/egress allowlist) rather than
 in-process Python restrictions.

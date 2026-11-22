@@ -108,10 +108,14 @@ in the live wiring test (10/10).
 Ordinary authenticated clients cannot reach the mutating administrative surface
 (artifacts, releases, deployments, secrets) or publish a bundle: those paths
 require an admin key, and native execution additionally requires a signature
-from an allowlisted operator key. RT-01 therefore remains **High (7.2)** with
-`PR:H`, not Critical: exploitation requires either admin credentials or
-compromise of the operator signing key. If a deployment issues admin keys to
-tenants, or exposes the signing key, RT-01 escalates to Critical.
+from an allowlisted operator key. RT-01 therefore remains **High (7.2
+proposed upper bound)** with `PR:H`, not Critical: exploitation requires
+operator-level publication/signing capability plus the worker grant. If a
+deployment delegates signing to tenants, hands admin keys to tenants, or
+exposes the signing key, RT-01 escalates toward `PR:L` (8.8); if publication
+is treated as local privileged operations, the conservative `AV:L` reading is
+6.7 Medium. The native-tier contract question is analyzed separately in
+`security_contract.md`.
 
 ## Addendum (2026-11-22, second pass)
 
@@ -127,14 +131,17 @@ Two gaps in the first pass were closed:
    `resolve_and_register` on manifests that actually declare
    `executorTier:"native"`: valid signature+grant resolves (including via
    `JULEP_PURE_NATIVE_DEPS`); unsigned, tampered-manifest, empty/wrong grant,
-   and non-allowlisted-signer variants are all rejected. Result: 7/7 — see
+   and non-allowlisted-signer variants are all rejected. Result: 8/8 — see
    `native_grant_binding.stdout`.
-3. **Grant scoping across workers.** `native_grant_scoping.py` shows the grant
-   binds a pure *name*, not content: two fresh workers accept different
-   validly-signed bundles under the same granted name; a warm worker pins
-   name→source_hash and rejects the second bundle; unsigned content is still
-   rejected. Result: 4/4 — see `native_grant_scoping.stdout` and
-   `security_contract.md` §3.
+3. **Grant scoping across worker processes.** `native_grant_scoping.py` now
+   runs four real OS subprocesses against one shared artifact store, with two
+   distinct allowlisted Ed25519 signers. It shows the grant binds a pure
+   *name*, not content or signer choice: fresh worker processes accept
+   different validly-signed bundles under the same granted name; a warm
+   process pins name→source_hash only locally; a fresh replacement process
+   accepts the second bundle; unsigned content and a non-allowlisted signer
+   are still rejected. Result: 7/7 — see `native_grant_scoping.stdout` and
+   `security_contract.md` §4.
 
 Structural consequence: `executorTier` is inside the signed manifest bytes —
 the tier claim cannot be modified without invalidating the Ed25519 signature.

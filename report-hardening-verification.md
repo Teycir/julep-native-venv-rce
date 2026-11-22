@@ -10,7 +10,7 @@
 | Scope | Local authorised lab: clone at `fc74d079a18c8124b2627ca4717f5a9c269267db`, package `3.0.0rc6` |
 | Status | **FINAL — verified with live exfiltration** |
 | Relation to prior work | Verification/addendum to `julep/20261121/214637` (RT-01, High 7.2) |
-| Public reference | GHSA-rhfp-jw6w-wrqq / `julep-ai/julep#1632` |
+| Public reference | `julep-ai/julep#1632` (open). Issue cites `GHSA-rhfp-jw6w-wrqq`, but that advisory URL currently returns 404 — cited-but-unverified |
 
 ## 1. Executive Summary
 
@@ -37,7 +37,7 @@ The original escape still reproduces unchanged (RT-01 re-verified). All three re
 | Low | 0 |
 | Informational | 1 (RT-04) |
 
-RT-01 remains **High 7.2 (proposed)** (`AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`, rescored after the authorization analysis — see `evidence/authz/authorization_analysis.md`; `AV:L` alternative = 6.7 Medium if publication is treated as a local privileged operation) and re-verified. A deployment that applies only the researcher-proposed Variant A patch, or only restricted builtins, remains exploitable at the same severity as RT-01.
+RT-01 remains **High 7.2 (proposed upper bound)** (`AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`, rescored after the authorization analysis — see `evidence/authz/authorization_analysis.md`; `AV:L` alternative = 6.7 Medium if publication is treated as a local privileged operation) and re-verified. A deployment that applies only the researcher-proposed Variant A patch, or only restricted builtins, remains exploitable at the same severity as RT-01.
 
 ### 1.4 Recommendation Summary
 
@@ -60,7 +60,7 @@ RT-01 remains **High 7.2 (proposed)** (`AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`, re
 
 | ID | Severity | CVSS 3.1 | CWE | Title | Status |
 |----|----------|----------|-----|-------|--------|
-| RT-01 | High | 7.2 | CWE-94 | Native venv tier executes bundle source on host (re-verified) | Verified |
+| RT-01 | High | 7.2 proposed | CWE-94 | Native venv tier executes bundle source on host (re-verified) | Verified |
 | RT-02 | Remediation bypass | — | CWE-184, CWE-94 | Tier-aware import denylist + reflection ban bypassable via `operator.attrgetter` and `pure.__globals__` | Verified |
 | RT-03 | Remediation bypass | — | CWE-693, CWE-94 | Restricted `__builtins__` bypassable via object-subclass walk to `sys.modules["os"]` | Verified |
 | RT-04 | Informational | 0.0 | CWE-693 | Layered in-process control blocks tested payloads but breaks native dependency imports | Verified |
@@ -70,7 +70,7 @@ RT-01 remains **High 7.2 (proposed)** (`AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`, re
 ### RT-01 — Code Injection in the native_venv bundle tier allows host command execution and secret exfiltration (re-verification)
 
 - **Severity:** High
-- **CVSS 3.1:** 7.2 — `AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`
+- **CVSS 3.1:** 7.2 proposed upper bound — `AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`
 - **CWE:** CWE-94
 - **Affected URL/Area:** `julep/registry.py`, `julep/execution/native_venv_executor.py`, `julep/worker_store.py`
 - **Verified at (UTC):** 2026-11-22T10:08:19Z – 2026-11-22T10:08:21Z
@@ -219,8 +219,8 @@ Self-hosted Julep `3.0.0rc6` / commit `fc74d07` with the native tier enabled and
 
 #### References
 
-- GHSA-rhfp-jw6w-wrqq — https://github.com/julep-ai/julep/security/advisories/GHSA-rhfp-jw6w-wrqq
-- Issue #1632 — https://github.com/julep-ai/julep/issues/1632
+- Issue #1632 — https://github.com/julep-ai/julep/issues/1632 (open; cites `GHSA-rhfp-jw6w-wrqq`, currently 404/unverified)
+- GHSA-rhfp-jw6w-wrqq — https://github.com/julep-ai/julep/security/advisories/GHSA-rhfp-jw6w-wrqq (cited by issue; verify publication status before relying on it)
 - CWE-184 — https://cwe.mitre.org/data/definitions/184.html
 - CWE-94 — https://cwe.mitre.org/data/definitions/94.html
 

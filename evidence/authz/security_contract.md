@@ -2,7 +2,12 @@
 
 **Decisive question:** does Julep guarantee that bundle-supplied source runs
 fail-closed in *every* execution tier, or does the operator's native grant
-explicitly waive that guarantee?
+explicitly waive source-level restrictions for `native_venv`?
+
+The evidence below establishes the implementation facts and the two
+defensible readings of the vendor documentation. It does **not** conclusively
+resolve which contract Julep intends; that is the question we ask the vendor
+to confirm.
 
 Sources (all at `fc74d079a18c8124b2627ca4717f5a9c269267db`, verified ==
 `origin/main` at analysis time — no upstream fix has landed):
@@ -14,8 +19,9 @@ Sources (all at `fc74d079a18c8124b2627ca4717f5a9c269267db`, verified ==
 - `docs/plans/2026-06-11-code-as-data-distribution.md` — design doc
 - `julep/registry.py::_WASM_GUEST_STDLIB_MODULES`,
   `_validate_portable_source`
+- `julep/worker_store.py::resolve_and_register`
 
-## 1. The two pieces of vendor text that appear to conflict
+## 1. The vendor texts
 
 **(a) Registration API contract** — `register_pure_from_source` docstring
 (verbatim):
@@ -24,12 +30,6 @@ Sources (all at `fc74d079a18c8124b2627ca4717f5a9c269267db`, verified ==
 > The bundle's shipped source is the body of an **untrusted (if signed)
 > pure: it must run fail-closed through its selected tier**, never directly
 > in the host process.
-
-This is a statement about *all* bundle-sourced pures: the source is
-untrusted, and the guarantee is that it "must run fail-closed through its
-selected tier." Fail-closed here means the source-validation gate decides
-what may execute — the tier is the enforcement point, and the validator is
-what makes execution safe.
 
 **(b) Tier documentation** — `wasm-tier.md` (verbatim):
 
@@ -43,105 +43,149 @@ what makes execution safe.
 > boundary: adding a pure name to that allowlist means trusting that bundle's
 > source to run as native code on the worker**.
 
-Read alone, (b) supports "the operator explicitly trusts native execution."
+**(c) Signature semantics** — SPEC §6.6 and `wasm-tier.md` describe ed25519
+signatures as detached provenance/integrity checks. They establish which
+allowlisted operator signed exact manifest bytes; they do not establish that
+the signed source is safe to execute.
 
-## 2. Why the conflict resolves in favour of a vulnerability
+## 2. What is established
 
-The two texts are reconciled by *what the signature and the grant each
-cover*:
+These points are implementation facts, not interpretations:
 
-- The signature (SPEC §6.6) establishes **provenance and integrity only** —
-  "bundle identity MUST NOT depend on who signed." It makes no claim that the
-  signed content is safe to execute. Signing answers "did an allowlisted
-  operator publish these exact bytes," not "is this code safe."
-- The grant (`JULEP_PURE_NATIVE_DEPS`, SPEC §6.5) is a per-pure-name decision
-  required "at BOTH deploy and worker resolution." The docs describe its
-  *purpose* as enabling "bundle pures whose declared dependencies are off the
-  curated WASI-wheel set" — i.e. permission to install/run the pure's
-  declared dependencies natively.
-- The docstring's "fail-closed through its selected tier" is the operative
-  safety guarantee for **untrusted** source: whatever tier is selected, the
-  source must pass validation that fails closed. The tier changes *where* it
-  runs, not *whether* it is validated.
+1. `register_pure_from_source` accepts `tier="native_venv"` and calls
+   `_validate_portable_source` without passing the tier.
+2. `_validate_portable_source` uses `_WASM_GUEST_STDLIB_MODULES` as its import
+   allowlist. That list contains `os`, `subprocess`, `socket`, `ctypes`,
+   `multiprocessing`, `pty`, `fcntl`, etc. — neutered/stubbed modules in the
+   wasm guest but fully capable host modules in a native subprocess.
+3. `native_venv_executor._DRIVER` executes the bundle source with
+   `exec(source, {"pure": pure})` in a host Python subprocess.
+4. `executorTier:"native"` is inside the signed manifest bytes; the worker-side
+   `native_grant` is operator configuration, not part of the signature.
+5. `JULEP_PURE_NATIVE_DEPS` authorizes pure **names**, not source hashes or
+   signer identities. The worker's signer allowlist remains a separate control.
 
-The defect: `_validate_portable_source` **is** the fail-closed check, and it
-is applied to native-tier source — but its import allowlist is
-`_WASM_GUEST_STDLIB_MODULES`, the *wasm guest's* stdlib list. That list
-contains `os`, `subprocess`, `socket`, `ctypes`, `multiprocessing`, `pty`,
-`fcntl`, etc. — neutered stubs inside the wasm component, **fully capable
-host modules** in a native subprocess. The validator therefore answers "is
-this importable in the wasm guest?" instead of "is this safe to run on the
-host?" for the tier where the answer actually matters.
+## 3. The two defensible contract readings
 
-So the precise claim is not "Julep runs untrusted code" (the docs disclaim
-that for the wasm tier) and not "the grant is meaningless" (it is a real
-operator decision). The claim is:
+### Reading A — native grant is the intended trust boundary
 
-> For `executorTier: "native"` pures, the fail-closed source validation that
-> the registration API promises for untrusted bundle source is satisfied by
-> an allowlist designed for the wasm guest. Imports that are inert in wasm
-> (`os`, `subprocess`, `socket`, `ctypes`, …) execute with full host
-> privileges. An operator granting a pure name for its *declared
-> dependencies* cannot distinguish "this bundle installs `requests`" from
-> "this bundle runs `os`/`subprocess`/`socket` on the worker host" — the
-> granted capability silently exceeds the documented one.
+Under this reading, the wasm tier is the untrusted-code tier, while
+`JULEP_PURE_NATIVE_DEPS` explicitly authorizes a bundle's source to run as
+native code. The signature, grant, release authorization, and worker
+configuration together form the fail-closed boundary; once granted, the
+native tier is trusted execution and source restrictions are not expected to
+provide OS isolation.
 
-## 3. Corroborating evidence — the grant is name-scoped, not content-scoped
+If this is the intended contract, RT-01 is better described as a
+**dangerous-capability / hardening issue** than a contract violation: the
+tier does what the grant says, but deployments may not realize that "trusted
+native code" includes arbitrary host `exec()`.
 
-`poc/authz/native_grant_scoping.py` (4/4 PASS,
-`evidence/authz/native_grant_scoping.stdout`) demonstrates:
+### Reading B — bundle source must remain fail-closed in every tier
 
-- Two **fresh** workers with the same `native_grant` name each accept a
-  *different* validly-signed bundle claiming that name — the grant binds a
-  name, not a source hash or signer.
-- A **warm** worker pins name→source_hash and rejects disagreeing content.
-- An unsigned bundle is still rejected — the signature gate is independent.
+Under this reading, the `register_pure_from_source` docstring applies to all
+bundle-sourced pures: source is "untrusted (if signed)" and "must run
+fail-closed through its selected tier." `_validate_portable_source` is the
+source-validation gate; using the wasm guest's allowlist for native-tier
+source means the gate answers "is this importable in wasm?" rather than "is
+this appropriate for host execution?".
 
-Consequence: in a fleet with mixed worker ages (rolling deploys, autoscaling,
-restarts), the same granted pure name can execute different code on
-different workers until each has resolved the same bundle. The grant does not
-pin *which* signed bundle it authorizes.
+If this is the intended contract, RT-01 is a **fail-closed validation gap**:
+the implemented capability exceeds the capability implied by validation and
+the API wording.
 
-## 4. Deployment scenarios where the boundary actually bites
+### Why we do not claim the question is resolved
+
+The tier documentation explicitly says the native tier is outside the wasm
+sandbox and that the grant is the operator trust boundary. That is strong
+evidence for Reading A. The API docstring's "untrusted … fail-closed through
+its selected tier" language and the presence of `_validate_portable_source`
+are strong evidence for Reading B. The public docs do not state whether the
+native grant waives source-level restrictions or merely selects a less
+isolated executor after validation.
+
+**Requested vendor clarification:** does `JULEP_PURE_NATIVE_DEPS` authorize
+*the exact signed source bytes* to run with host privileges, or only
+*dependency installation for a pure whose source still passes tier-appropriate
+validation*?
+
+## 4. Corroborating evidence — grant scoping across worker processes
+
+`poc/authz/native_grant_scoping.py` was rerun as a **process-level** test
+(`evidence/authz/native_grant_scoping.stdout`, 7/7 PASS). It uses four real OS
+subprocesses, one shared `LocalDirArtifactStore`, the same granted pure name,
+the same `JULEP_PURE_NATIVE_DEPS` value, and **two distinct allowlisted
+Ed25519 signing keys**:
+
+| Worker process | Requests | Result |
+|---|---|---|
+| A | bundle X signed by key A, then bundle Y signed by key B | X accepted; Y rejected by process-local `name -> source_hash` pin |
+| B | bundle Y signed by key B, then unsigned bundle Z | Y accepted; Z rejected as unsigned |
+| C | bundle Y signed by key B | accepted — fresh process has no prior pin |
+| D | bundle Y signed by key B, allowlist contains only key A | rejected — signer allowlist still enforced |
+
+Observed source hashes differed (`pure:def46719a1e53482` for X,
+`pure:c1cff4dddab73009` for Y), and the four worker PIDs were distinct.
+
+Consequences:
+
+- The grant binds a pure **name**, not a particular source hash.
+- Across fresh workers/processes, different validly signed bundles from
+  different allowlisted signers can claim the same granted name.
+- The name→hash pin is **process-local**; it does not survive worker restart
+  or replacement. A fleet with mixed worker ages or rolling deployments can
+  execute different signed content under the same granted name until all
+  workers resolve the same bundle reference.
+- This is a deployment-consistency observation, not an independent RCE: every
+  accepted bundle still required a valid signature from a worker-allowlisted
+  signer and the operator grant.
+
+Limitations: the test exercises `resolve_and_register` in fresh Python
+processes with a local artifact store; it does not model Temporal workflow
+replay, control-plane release selection, or production worker lifecycle
+beyond process restart/replacement.
+
+## 5. Deployment scenarios where the boundary matters
 
 | Scenario | Exposure |
 |---|---|
-| A. Operator publishes all bundles, grants native sparingly | Residual: silent capability overreach — grant for deps ⇒ arbitrary host exec for whatever the signed source contains |
-| B. Deployment delegates bundle signing to tenant/third-party authors | **High** — any tenant pure granted native (or name-colliding with a granted name on a fresh worker, per §3) yields host RCE; signature proves provenance, not safety |
+| A. Operator publishes all bundles, grants native sparingly | Residual risk depends on Reading A/B: either trusted-native hardening or fail-closed validation gap |
+| B. Deployment delegates bundle signing to tenant/third-party authors | Highest exposure — any granted or name-colliding bundle yields host RCE; signature proves provenance, not safety |
 | C. Release pipeline compromised | High — pipeline holds publish+sign capability; native grant on target worker completes the chain |
 | D. Local/dev mode (`julep dev`) | Loopback-only; all-zero dev signing key is public but scope is local — not a production path |
 
-## 5. Remediation architectures
+## 6. Remediation request
 
-**Architecture A — trusted native execution (documented intent).** Keep
-native tier for operator-published bundles: dedicated worker identity, no
-host secrets in worker env, egress allowlist — and fix
-`_validate_portable_source` to use a **native-tier** allowlist (deny
-`os`/`subprocess`/`socket`/`ctypes`/etc., or require them to arrive via
-declared deps), so the granted capability matches the implemented one. Also
-consider binding the grant to `(name, sourceHash)` rather than name alone,
-closing the §3 fresh-worker gap.
+1. **Clarify the contract.** State explicitly whether `native_venv` bundle
+   source is trusted-by-grant or must pass tier-appropriate fail-closed
+   validation.
+2. **If native is trusted execution:** keep it operator-only, use dedicated
+   worker identities, keep host secrets out of the worker environment, apply
+   network egress allowlists, and consider binding grants to
+   `(name, sourceHash)` rather than name alone.
+3. **If native must remain fail-closed:** replace `_WASM_GUEST_STDLIB_MODULES`
+   with a native-tier allow/deny policy that reflects host capabilities, and
+   persist the name→source-hash pin across worker restarts or bind the grant
+   to signed content.
+4. **If untrusted/third-party bundles are in scope:** run native pures under
+   real OS isolation — container/namespace, seccomp, non-root UID, read-only
+   rootfs, no inherited host environment, explicit egress policy, resource
+   limits. Python import denylists, dunder bans, and restricted builtins are
+   not a boundary (see `report-hardening-verification.md`).
 
-**Architecture B — untrusted/third-party bundles.** If bundles from
-non-operators are ever executed, the native tier must be a real sandbox:
-container/namespace isolation, seccomp, non-root UID, read-only rootfs, no
-host env inheritance, explicit egress policy, resource limits. No Python
-in-process restriction (import denylists, `__builtins__` filtering, dunder
-bans) is a boundary — the researcher-proposed Variant A/B1/B2 mitigations in
-`report-hardening-verification.md` are each bypassed or break legitimate
-deps (RT-02/RT-03/RT-04).
+## 7. CVSS note
 
-## 6. CVSS note
-
-`AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` = **7.2 (proposed)**. `PR:H` reflects
-operator-level publication+signing in the default supported configuration.
-Alternatives:
+`AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` = **7.2 (proposed upper bound)**.
+`PR:H` reflects operator-level publication/signing plus worker grant in the
+default supported configuration. Alternatives:
 
 - Delegated signing / pipeline compromise (scenarios B/C): arguable `PR:L`
   → **8.8**.
-- If a reviewer treats publication as a *local* privileged operation rather
-  than network-reachable: `AV:L/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` = **6.7
-  (Medium)**. `AV:N` is retained because the demonstrated trigger is a
-  network-delivered workflow run invoking the registered pure, but the
-  bundle-introduction step is operator-side; we flag this as the weakest
-  metric and defer to the vendor's deployment model.
+- Conservative reading where bundle introduction is a local privileged
+  operation rather than network-reachable: `AV:L/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`
+  = **6.7 (Medium)**.
+
+`AV:N` remains the weakest metric: the demonstrated trigger is a
+network-delivered workflow run invoking the registered pure, while bundle
+introduction is operator-side. We retain 7.2 only as a proposed score pending
+the vendor's deployment model and contract clarification.

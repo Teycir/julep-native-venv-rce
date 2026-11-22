@@ -9,7 +9,7 @@ The `native_venv` execution tier runs bundle-supplied source with
 `import os` / `import subprocess` achieves host RCE and data exfiltration —
 verified end-to-end with a live listener (`poc/rt01/`, `evidence/rt01/`).
 
-**RT-01 — production finding, High 7.2 (proposed).**
+**RT-01 — primary finding, High 7.2 (proposed upper bound).**
 `AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`. Exploitation must satisfy **four
 distinct controls**: (1) ability to introduce a valid signed bundle through
 the deployment's publication pipeline (CLI `deploy`/`application` commands —
@@ -22,7 +22,9 @@ variants that delegate signing to tenants or expose admin keys argue `PR:L`
 (8.8); if publication is treated as a *local* privileged operation,
 `AV:L/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` = 6.7 (Medium) — `AV:N` is retained
 because the trigger is a network-delivered workflow run, but bundle
-introduction is operator-side (see `security_contract.md` §6).
+introduction is operator-side (see `security_contract.md` §7). Whether this is
+a contract violation or a dangerous trusted-native capability depends on the
+vendor clarification requested in `security_contract.md` §3.
 
 **RT-02 / RT-03 — remediation bypasses, not independent vulnerabilities.**
 Researcher-proposed hardening variants (Variant A: tier-aware import
@@ -40,20 +42,21 @@ security boundary; the fix is OS-level sandboxing.
 
 | ID | Severity | CVSS 3.1 | CWE | Title |
 |----|----------|----------|-----|-------|
-| RT-01 | High | 7.2 | CWE-94 | `native_venv` tier executes arbitrary bundle source → host RCE |
+| RT-01 | High | 7.2 proposed | CWE-94 | `native_venv` tier executes arbitrary bundle source → host RCE |
 | RT-02 | Remediation bypass | — | CWE-693 | Tier-aware import denylist bypassed via `attrgetter`/`__globals__` |
 | RT-03 | Remediation bypass | — | CWE-693 | Restricted `__builtins__` bypassed via `__subclasses__` → `sys.modules["os"]` |
 | RT-04 | Informational | — | — | Layered controls block payloads but break legitimate `import packaging` |
 
-Public reference: [GHSA-rhfp-jw6w-wrqq](https://github.com/julep-ai/julep/security/advisories/GHSA-rhfp-jw6w-wrqq) · upstream issue `julep-ai/julep#1632`
+Public reference: upstream issue [`julep-ai/julep#1632`](https://github.com/julep-ai/julep/issues/1632) (open; created 2026-10-16, body says originally reported 2026-09-09). The issue cites `GHSA-rhfp-jw6w-wrqq`, but that advisory URL currently returns 404 — treat the GHSA as cited-but-unverified until publication is confirmed.
 
 ## Reports
 
+- [`vendor-facing-report.md`](vendor-facing-report.md) — concise disclosure summary for vendor triage
 - [`report-rt01.md`](report-rt01.md) — original finding: `native_venv` escape, verified with live exfiltration (`poc/rt01/`, `evidence/rt01/`)
 - [`report-hardening-verification.md`](report-hardening-verification.md) — verification/addendum: researcher-proposed hardening variants A/B1/B2, bypass payloads, patch diffs, 14-assertion run matrix (`poc/hardening/`, `evidence/hardening/`)
 - [`evidence/authz/authorization_analysis.md`](evidence/authz/authorization_analysis.md) — supporting appendix: route authz inventory, authentication decisions, signature verification, native-grant binding
 - [`evidence/authz/attacker_model.md`](evidence/authz/attacker_model.md) — complete enumeration of pure-source entry paths and attacker prerequisites
-- [`evidence/authz/security_contract.md`](evidence/authz/security_contract.md) — vendor-documented trust boundary, signature semantics, and the capability-overreach argument
+- [`evidence/authz/security_contract.md`](evidence/authz/security_contract.md) — vendor-documented trust boundary, signature semantics, the unresolved native-tier contract question, and deployment scenarios
 
 ## Affected
 
@@ -72,6 +75,7 @@ SHA256 manifests, timestamps, patch diffs, runnable exploit scripts).
 | 2026-11-21 | RT-01 finding verified in local authorised lab |
 | 2026-11-22 | Hardening verification engagement: variants A/B1/B2 implemented, bypass matrix executed |
 | 2026-11-22 | Authorization analysis: route inventory, auth decisions, signature chain, native-grant binding |
+| 2026-11-22 | Contract/grant-scoping revision: process-level signer test, GHSA status corrected, vendor summary added |
 | pending | Vendor disclosure / CVE assignment |
 
 ## Authorization analysis — attacker prerequisites
@@ -101,35 +105,38 @@ mutating admin routes. A full path enumeration
 **no route for an unauthenticated or client-role attacker** to introduce
 executable source onto a `native_venv` worker — every path terminates at an
 operator-held signing key, the publication pipeline, or operator env vars.
-The registration API's own contract — `register_pure_from_source`'s docstring:
-bundle source is "the body of an **untrusted (if signed) pure: it must run
-fail-closed through its selected tier**" — is the decisive text. The
-docstring promises fail-closed validation for *every* tier; the tier docs
-promise the grant means "trusting that bundle's source to run as native
-code." Both hold only if the validator actually restricts native-tier source —
-and it does not: `_validate_portable_source` applies the wasm guest's stdlib
-allowlist (`os`, `subprocess`, `socket`, `ctypes` are all permitted — they are
-neutered stubs in wasm but fully capable on the host). The defensible claim is
-a **fail-closed validation gap**: granted capability (declared deps) exceeds
-implemented capability (arbitrary host exec). Full analysis:
+The registration API's docstring says bundle source is "the body of an
+**untrusted (if signed) pure: it must run fail-closed through its selected
+tier**," while the tier docs call `JULEP_PURE_NATIVE_DEPS` "the operator trust
+boundary" for source running "as native code." Those texts support two
+defensible readings — trusted-native execution versus fail-closed validation
+in every tier — so the contract question is explicitly left for vendor
+clarification in
 [`evidence/authz/security_contract.md`](evidence/authz/security_contract.md).
-Corroborating scoping test
+The implementation fact is narrower and still important:
+`_validate_portable_source` applies the wasm guest's stdlib allowlist
+(`os`, `subprocess`, `socket`, `ctypes` are permitted — neutered stubs in wasm
+but fully capable on the host) to native-tier source.
+Corroborating process-level scoping test
 ([`poc/authz/native_grant_scoping.py`](poc/authz/native_grant_scoping.py),
-4/4 PASS): the grant binds a pure *name*, not content — fresh workers accept
-different signed bundles under the same granted name while warm workers pin
-name→hash.
-This is why RT-01 is scored `PR:H` (7.2, proposed), not `PR:L` (8.8); delegated
-signing or pipeline compromise argues 8.8.
+7/7 PASS): four distinct OS worker processes, two allowlisted signing keys,
+and one shared artifact store show the grant binds a pure *name*, not content
+— fresh workers accept different signed bundles under the same granted name,
+a warm worker pins name→hash only within its process, and a non-allowlisted
+signer is still rejected.
+This is why RT-01 is scored `PR:H` (7.2 proposed upper bound), not `PR:L`
+(8.8); delegated signing or pipeline compromise argues 8.8, and the
+conservative `AV:L` reading is 6.7 Medium.
 
 ## Recommendation
 
-Two architectures, per `security_contract.md` §5:
+Two architectures, per `security_contract.md` §6:
 
-- **A — trusted native execution (documented intent):** keep the tier for
-  operator-published bundles; fix `_validate_portable_source` to use a
-  *native-tier* allowlist so the granted capability (declared deps) matches
-  the implemented one; dedicated worker identity, no host secrets, egress
-  allowlist.
+- **A — trusted native execution (if that is the intended contract):** keep
+  the tier for operator-published bundles; fix `_validate_portable_source` to
+  use a *native-tier* allowlist or explicitly document that the grant waives
+  source restrictions; dedicated worker identity, no host secrets, egress
+  allowlist, and consider binding grants to `(name, sourceHash)`.
 - **B — untrusted/third-party bundles:** real OS isolation — container /
   namespace, seccomp, non-root UID, read-only rootfs, no host env, explicit
   egress policy, resource limits. Python in-process restrictions are not a
@@ -152,7 +159,7 @@ source of truth.
 `sha256sum -c SHA256SUMS.txt`. It is generated with:
 
 ```bash
-find . -type f ! -path './.git/*' ! -name 'SHA256SUMS.txt' | sort | xargs sha256sum > SHA256SUMS.txt
+find . -type f ! -path './.git/*' ! -path './SHA256SUMS.txt' | sort | xargs sha256sum > SHA256SUMS.txt
 ```
 
 `README.md` and `SHA256SUMS-hardening.txt` are included. The per-engagement
@@ -176,6 +183,7 @@ Patch application: diffs in [`poc/hardening/patches/`](poc/hardening/patches/), 
 ## Layout
 
 ```
+vendor-facing-report.md           concise vendor triage summary
 report-rt01.md                     RT-01 original report
 report-hardening-verification.md   RT-02/03/04 verification report
 poc/rt01/                          original native_venv RCE PoC

@@ -9,12 +9,12 @@
 | Generated (UTC) | 2026-11-21T21:46:37Z |
 | Scope | Local authorised lab: cloned repo `fc74d079a18c8124b2627ca4717f5a9c269267db`, package `3.0.0rc6` |
 | Status | **FINAL — verified with live exfiltration** |
-| Public reference | GHSA-rhfp-jw6w-wrqq / `julep-ai/julep#1632` (reported 2026-09-09, still open 2026-11-21) |
+| Public reference | `julep-ai/julep#1632` (open; created 2026-10-16, body says originally reported 2026-09-09). Issue cites `GHSA-rhfp-jw6w-wrqq`, but that advisory URL currently returns 404 — cited-but-unverified |
 
 ## 1. Executive Summary
 
 ### 1.1 Background
-Julep ships bundle-sourced “pures” through two execution tiers: `wasm` (sandboxed) and `native_venv` (a real Python subprocess with host OS access). The stated invariant is that untrusted bundle source “must run fail-closed through its selected tier.” That invariant is false for `native_venv`.
+Julep ships bundle-sourced “pures” through two execution tiers: `wasm` (sandboxed) and `native_venv` (a real Python subprocess with host OS access). The registration API describes bundle source as “untrusted (if signed)” that “must run fail-closed through its selected tier,” while the tier docs describe `JULEP_PURE_NATIVE_DEPS` as the operator trust boundary for native code. Whether the native grant waives source-level restrictions or merely selects a less isolated executor is the contract question analyzed in `evidence/authz/security_contract.md`; the implementation fact is that `native_venv` does not provide OS isolation.
 
 ### 1.2 Overall Posture
 `julep/registry.py::_validate_portable_source` applies the WASM guest stdlib allowlist to both tiers. The allowlist intentionally contains `os`, `subprocess`, `ctypes`, `socket`, `importlib`, and similar modules because the WASM runtime is the real boundary. For `native_venv`, no sandbox exists: the executor’s driver calls `exec(request["source"], {"pure": pure})` in a genuine host subprocess. A bundle pure with `executorTier: "native"` can therefore import `subprocess`, run `id`, read `/etc/passwd`, and exfiltrate environment secrets.
@@ -27,13 +27,13 @@ Julep ships bundle-sourced “pures” through two execution tiers: `wasm` (sand
 | Medium | 0 |
 | Low | 0 |
 
-Overall: **High (CVSS 3.1 7.2)** — exploitation requires an admin-level API key (bundle publication routes are `require_admin`) and/or an allowlisted operator signing key plus a worker `JULEP_PURE_NATIVE_DEPS` grant; absent those, an attacker cannot introduce an executable bundle.
+Overall: **High (CVSS 3.1 7.2 proposed upper bound)** — exploitation requires operator-level bundle publication/signing capability, a worker-allowlisted Ed25519 signature, a worker-side `JULEP_PURE_NATIVE_DEPS` grant, and admin release/deployment authorization where the deployment path requires it; absent those, an attacker cannot introduce an executable bundle.
 
 ### 1.4 Recommendation Summary
-1. Apply the researcher-proposed tier-aware denylist and reflection ban (issue #1632 is a researcher-filed proposal, not vendor-deployed remediation).
-2. Restrict `__builtins__` inside the `native_venv` driver’s `exec()` (class-level fix, not just an enumeration).
-3. Run native pures in a real sandbox (container, seccomp, namespaces, read-only FS, no host env, egress allowlist).
-4. Treat `JULEP_PURE_NATIVE_DEPS` as a privileged, per-bundle capability, not a name-only allowlist.
+1. Clarify whether `JULEP_PURE_NATIVE_DEPS` authorizes exact signed source for host execution or only dependency installation under tier-appropriate validation.
+2. Run native pures in a real sandbox (container, seccomp, namespaces, read-only FS, no host env, egress allowlist).
+3. If the native tier must remain fail-closed, replace the wasm-guest import allowlist with a native-tier policy; if it is trusted execution, document that explicitly and isolate the worker.
+4. Treat `JULEP_PURE_NATIVE_DEPS` as a privileged capability; consider binding it to `(name, sourceHash)` rather than name alone.
 
 ## 2. Scope & Methodology
 
@@ -45,15 +45,15 @@ Overall: **High (CVSS 3.1 7.2)** — exploitation requires an admin-level API ke
 
 | ID | Severity | CVSS 3.1 | CWE | Title | Status |
 |----|----------|----------|-----|-------|--------|
-| RT-01 | High | 7.2 | CWE-94 | Native venv tier accepts OS/process modules and executes bundle source on the host | Verified |
+| RT-01 | High | 7.2 proposed | CWE-94 | Native venv tier accepts OS/process modules and executes bundle source on the host | Verified |
 
 ## 4. Findings Detail
 
 ### RT-01 — Code Injection in the native_venv bundle tier allows host command execution and secret exfiltration
 
 - **Severity:** High
-- **CVSS 3.1:** 7.2 — `AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` — https://www.first.org/cvss/calculator/3.1#CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H
-- **Scoring note (2026-11-22 revision):** the original 8.8 (`PR:L`) predated the authorization analysis. `evidence/authz/authorization_analysis.md` demonstrates that bundle publication is an operator pipeline operation (the control plane never signs; `POST /releases`/`POST /deployments` are `require_admin`), native execution additionally requires an allowlisted Ed25519 signer plus a worker-side `JULEP_PURE_NATIVE_DEPS` grant — i.e. high privileges (`PR:H`, proposed 7.2). Deployments that delegate signing to tenants, hand admin keys to tenants, or expose the operator signing key collapse this to `PR:L` (8.8) or worse; if the vendor treats publication as a *local* privileged operation, `AV:L/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` = 6.7 (Medium). `AV:N` is retained because the trigger is a network-delivered workflow run, but bundle introduction is operator-side — flagged as the weakest metric. The vendor documents the grant as "trusting that bundle's source to run as native code" (`docs-site/.../deploy/wasm-tier.md`); the defensible claim is therefore **capability overreach** — the grant is for declared dependency installation, but `_validate_portable_source` applies the wasm guest's stdlib allowlist, so `os`/`subprocess`/`socket`/`ctypes` pass on the host tier. See `evidence/authz/security_contract.md`.
+- **CVSS 3.1:** 7.2 proposed upper bound — `AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` — https://www.first.org/cvss/calculator/3.1#CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H
+- **Scoring note (2026-11-22 revision):** the original 8.8 (`PR:L`) predated the authorization analysis. `evidence/authz/authorization_analysis.md` demonstrates that bundle publication is an operator pipeline operation (the control plane never signs; `POST /releases`/`POST /deployments` are `require_admin`), native execution additionally requires an allowlisted Ed25519 signer plus a worker-side `JULEP_PURE_NATIVE_DEPS` grant — i.e. high privileges (`PR:H`, proposed 7.2 upper bound). Deployments that delegate signing to tenants, hand admin keys to tenants, or expose the operator signing key collapse this to `PR:L` (8.8) or worse; if the vendor treats publication as a *local* privileged operation, `AV:L/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` = 6.7 (Medium). `AV:N` is retained only as the proposed upper bound because the trigger is a network-delivered workflow run, while bundle introduction is operator-side — flagged as the weakest metric. The contract status is deliberately unresolved: `wasm-tier.md` calls the grant "the operator trust boundary" for source running "as native code," while `register_pure_from_source` calls bundle source "untrusted (if signed)" that must "run fail-closed through its selected tier." `_validate_portable_source` applies the wasm guest's stdlib allowlist to native-tier source, so `os`/`subprocess`/`socket`/`ctypes` pass on the host tier. See `evidence/authz/security_contract.md` for the two contract readings and the requested vendor clarification.
 - **CWE:** CWE-94 (Improper Control of Generation of Code / Code Injection); related CWE-184 (Incomplete List of Disallowed Inputs)
 - **Affected URL/Area:** `julep/registry.py::_validate_portable_source` (line 150), `julep/registry.py::register_pure_from_source` (line 407), `julep/execution/native_venv_executor.py::_DRIVER` (line 25) and `exec()` (line 39), `julep/worker_store.py::_manifest_pures` (line 109) and `resolve_and_register` native grant check (line 338)
 - **Difficulty to exploit:** Low
@@ -70,7 +70,7 @@ os, subprocess, ctypes, socket, importlib, multiprocessing, signal, mmap,
 resource, pty, fcntl, posix, nt, msvcrt, winreg, _posixsubprocess, sys, builtins
 ```
 
-That list is correct for the `wasm` tier because the WASM runtime prevents host access. It is wrong for `native_venv`. `register_pure_from_source` calls `_validate_portable_source` identically for both tiers and never passes a tier argument. A pure that does `import os` or `import subprocess` therefore passes validation with no error.
+That list is correct for the `wasm` tier because the WASM runtime prevents host access. Whether it is also correct for `native_venv` depends on the unresolved contract question: if bundle source must remain fail-closed in every tier, sharing this allowlist is the defect; if the native grant explicitly authorizes trusted native source, the issue is the missing OS isolation around that trusted execution. `register_pure_from_source` calls `_validate_portable_source` identically for both tiers and never passes a tier argument. A pure that does `import os` or `import subprocess` therefore passes validation with no error.
 
 `resolve_and_register` then registers the pure with `tier="native_venv"`, and `Registry.get_pure` routes it to `NativeVenvExecutor.run`. The executor’s driver does:
 
@@ -89,7 +89,7 @@ value = fn(request["value"], **(request.get("kwargs") or {}))
 3. A worker that grants that pure name via `JULEP_PURE_NATIVE_DEPS` resolves the signed bundle and registers it as `native_venv`.
 4. The next workflow invocation of the pure executes the payload as the worker’s OS user. The pure reads `/etc/passwd`, captures `id`, hostname, cwd, PID, and environment secrets, then POSTs the proof to an attacker-controlled listener.
 
-The native grant is a mitigating control, but the tier is designed for dependency-bearing pures and is selected solely by pure name; it does not inspect whether the bundle source is safe. The vulnerability breaks the documented “untrusted (if signed) … must run fail-closed” guarantee.
+The native grant is a mitigating control, but the tier is designed for dependency-bearing pures and is selected solely by pure name; it does not inspect whether the bundle source is safe. If the API’s “untrusted (if signed) … must run fail-closed” guarantee applies to native-tier source, this chain violates that guarantee; if the grant is intended to authorize trusted native source, the residual issue is that the granted capability is broader and less isolated than deployments may expect.
 
 #### Steps to Reproduce / PoC
 
@@ -211,15 +211,15 @@ Self-hosted Julep `3.0.0rc6` (commit `fc74d07`) and nearby commits where `_valid
 
 #### Recommended Fix
 
-- Apply the researcher-proposed fix tracked in issue #1632 (researcher-filed, not vendor-deployed): add a `tier` parameter to `_validate_portable_source`; for `native_venv`, reject `os`, `subprocess`, `ctypes`, `socket`, `importlib`, `multiprocessing`, `signal`, `mmap`, `resource`, `pty`, `fcntl`, `posix`, `nt`, `msvcrt`, `winreg`, `_posixsubprocess`, `sys`, `builtins`.
-- For both tiers, reject bare uses of `__import__`, `eval`, `exec`, `compile`, `globals`, `vars` and attribute access to `__builtins__`, `__globals__`, `__subclasses__`, `__loader__`, `__spec__`.
-- Stronger: do not rely on an import denylist. Pass a restricted `__builtins__` mapping to the driver’s `exec()` and expose only `pure`; this closes the reflection class rather than enumerating members.
-- Defense-in-depth: run native pures in a container/namespace with seccomp, read-only rootfs, no host env, non-root UID, and an egress allowlist. Make `JULEP_PURE_NATIVE_DEPS` a per-bundle signed capability, not a name-only allowlist.
+- First clarify the contract: does `JULEP_PURE_NATIVE_DEPS` authorize exact signed source for host execution, or only dependency installation under tier-appropriate validation?
+- If the native tier must remain fail-closed, add tier-aware source validation. The researcher-proposed issue #1632 denylist is a starting point, not a boundary: it is bypassable via `operator.attrgetter`/`__globals__` (RT-02), and restricted `__builtins__` alone is bypassable via object-subclass traversal (RT-03).
+- Stronger: do not rely on in-process Python restrictions. Pass no ambient host capabilities into the driver and run native pures in a container/namespace with seccomp, read-only rootfs, no host env, non-root UID, and an egress allowlist.
+- Defense-in-depth: make `JULEP_PURE_NATIVE_DEPS` a per-bundle signed capability or bind it to `(name, sourceHash)`; the process-level scoping test shows the current name-only grant accepts different signed content on fresh workers.
 
 #### References
 
-- GHSA-rhfp-jw6w-wrqq — https://github.com/julep-ai/julep/security/advisories/GHSA-rhfp-jw6w-wrqq
-- Issue #1632 — https://github.com/julep-ai/julep/issues/1632
+- Issue #1632 — https://github.com/julep-ai/julep/issues/1632 (open; cites `GHSA-rhfp-jw6w-wrqq`, currently 404/unverified)
+- GHSA-rhfp-jw6w-wrqq — https://github.com/julep-ai/julep/security/advisories/GHSA-rhfp-jw6w-wrqq (cited by issue; verify publication status before relying on it)
 - CWE-94 — https://cwe.mitre.org/data/definitions/94.html
 - CWE-184 — https://cwe.mitre.org/data/definitions/184.html
 - OWASP Code Injection — https://owasp.org/www-community/attacks/Code_Injection
