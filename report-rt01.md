@@ -165,7 +165,7 @@ Content-Length: 2
 ok
 ```
 
-Verbatim exploit output (`evidence/poc-run.log`):
+Verbatim exploit output (`evidence/rt01/poc-run.log`):
 
 ```
 [*] target pure: poc.native_rce.v1
@@ -190,12 +190,12 @@ Verbatim exploit output (`evidence/poc-run.log`):
 
 | Artifact | sha256 |
 |---|---|
-| `evidence/proof.raw` | `55ec7ef1fe37f5ec7abb1dd7df1b159bfbb3c5a6bf10d7ce800098571dc137e9` |
-| `evidence/poc-run.log` | `3e63d08818c11cde6977685e46a7c6e9d7b541ff69d4a749f43259d0d65973ff` |
-| `evidence/bundle_manifest.json` | `21f1a12e8f39ae7ef779b58efc8500ca950540b73b39dccd189f3b232be9f4ae` |
-| `evidence/bundle_signature.json` | `5d78240ff79a1ff8609c29a4f9000706aeb1dce12334b386ab7f5e79795fdc2d` |
-| `evidence/payload_source.py` | `4cbf53639db5125a77739bbdacc8e36a4b82f6bcf8862287e8de2631b85e2598` |
-| `evidence/marker.txt` | `672c8bf65a4b702c64437566ac160844997fa7a6cbd8d7179305cb421f73d38c` |
+| `evidence/rt01/proof.raw` | `55ec7ef1fe37f5ec7abb1dd7df1b159bfbb3c5a6bf10d7ce800098571dc137e9` |
+| `evidence/rt01/poc-run.log` | `3e63d08818c11cde6977685e46a7c6e9d7b541ff69d4a749f43259d0d65973ff` |
+| `evidence/rt01/bundle_manifest.json` | `21f1a12e8f39ae7ef779b58efc8500ca950540b73b39dccd189f3b232be9f4ae` |
+| `evidence/rt01/bundle_signature.json` | `5d78240ff79a1ff8609c29a4f9000706aeb1dce12334b386ab7f5e79795fdc2d` |
+| `evidence/rt01/payload_source.py` | `4cbf53639db5125a77739bbdacc8e36a4b82f6bcf8862287e8de2631b85e2598` |
+| `evidence/rt01/marker.txt` | `672c8bf65a4b702c64437566ac160844997fa7a6cbd8d7179305cb421f73d38c` |
 | `poc/rt01/poc_native_venv_rce.py` | `20b0b2ec16acafa8c554dace93b089b0cb71e7b51098739fc1fed1253bd85e58` |
 | `poc/rt01/listener.py` | `d62cebc90b3f5bd89de2e5ff2a642e01324c5acecc36faa74f847f827f482ee6` |
 
@@ -227,6 +227,10 @@ Self-hosted Julep `3.0.0rc6` (commit `fc74d07`) and nearby commits where `_valid
 ## 5. Appendix
 
 ### 5.1 Evidence inventory
+
+Paths below are the original engagement-relative paths; in this repository the
+RT-01 artifacts live under `evidence/rt01/` (e.g. `evidence/poc-run.log` →
+`evidence/rt01/poc-run.log`).
 
 ```
 d62cebc90b3f5bd89de2e5ff2a642e01324c5acecc36faa74f847f827f482ee6  poc/rt01/listener.py

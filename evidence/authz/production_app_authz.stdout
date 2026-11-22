@@ -27,6 +27,10 @@ POST    /secrets/{name}/archive                  require_admin    require_admin 
 PUT     /artifacts/{sha256}                      require_admin    require_admin    PASS
 PUT     /secrets/{name}                          require_admin    require_admin    PASS
 
+NOTE: for gated routes, PASS means the auth gate admitted/rejected as
+expected — handler statuses (404/422/500) reflect empty test stores, not
+business-logic success. Ungated routes must match UNGATED_STATUS exactly.
+
 METHOD  PATH                                     IDENTITY STATUS  RESULT
 GET     /health/ready                            missing  404     PASS
 GET     /health/ready                            bad      404     PASS

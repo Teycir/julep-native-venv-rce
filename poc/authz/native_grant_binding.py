@@ -4,13 +4,15 @@
 The prior signature proof used ``native_grant=()`` — it showed signing works
 but not that a *native* request is cryptographically covered.  This test
 builds real signed manifests containing a pure with ``executorTier: "native"``
-and exercises ``resolve_and_register`` for five cases:
+and exercises ``resolve_and_register`` for these cases:
 
   1. valid signature + worker grant covering the pure      -> resolves
   2. unsigned bundle whose manifest requests native         -> rejected
-  3. manifest tampered after signing (tier field changed)   -> rejected
+  3a. manifest dep-set mutated after signing               -> rejected
+  3b. executorTier field removed after signing             -> rejected
   4. valid signer, worker grant empty / names other pure    -> rejected
   5. valid signer+grant, but signer outside worker allowlist -> rejected
+  6. JULEP_PURE_NATIVE_DEPS env-var grant path              -> resolves
 
 Key structural finding demonstrated here: ``executorTier`` lives *inside* the
 signed manifest bytes, so it cannot be flipped without invalidating the
@@ -19,7 +21,7 @@ is NOT part of the signature — it is an operator-controlled allowlist enforced
 at resolution time.
 
 Run:  python3 native_grant_binding.py --src /path/to/julep
-Exit 0 only if all five cases behave as asserted.
+Exit 0 only if all cases behave as asserted.
 """
 
 from __future__ import annotations
@@ -179,11 +181,8 @@ def main() -> int:
     except BundleResolutionError as exc:
         check("2. unsigned native bundle rejected", "unsigned" in str(exc), str(exc))
 
-    # Case 3: manifest bytes modified after signing -> signature invalid.
-    # Build a signed bundle, then store a TAMPERED manifest (tier claim flipped
-    # native->wasm-omit is impossible since field must be 'native' or absent;
-    # instead flip deps so the signed bytes no longer match) under its own hash
-    # while reusing the ORIGINAL signature digest.
+    # Case 3a: manifest bytes modified after signing (dep set swapped) ->
+    # signature no longer covers the stored bytes -> rejected.
     store = DictStore()
     bh, sd, pub, manifest_bytes = build_bundle(store)
     import json as _json
@@ -194,18 +193,33 @@ def main() -> int:
     # check is the only thing stopping it.
     tampered["pures"][0]["deps"] = ["requests==2.32.0"]
     tampered_bytes = _json.dumps(tampered, sort_keys=True, separators=(",", ":")).encode()
-    # canonical_json ordering may differ; what matters is bytes != signed bytes.
     bh_tampered = store.put(tampered_bytes)
     try:
         attempt(store, bh_tampered, sd, [pub_a], [PURE_NAME])
-        check("3. tampered manifest rejected", False, "was accepted")
+        check("3a. dep-tampered manifest rejected", False, "was accepted")
     except BundleResolutionError as exc:
-        detail = str(exc)
-        # signature.bundleHash refers to the ORIGINAL hash -> mismatch, or
-        # sig verify fails if hashes collide by construction. Either is a reject.
-        check("3. tampered manifest rejected", True, detail)
+        check("3a. dep-tampered manifest rejected", True, str(exc))
     except Exception as exc:  # noqa: BLE001
-        check("3. tampered manifest rejected", False, f"{type(exc).__name__}: {exc}")
+        check("3a. dep-tampered manifest rejected", False, f"{type(exc).__name__}: {exc}")
+
+    # Case 3b: DIRECT executorTier tamper — remove the tier claim from the pure
+    # record, recompute the bundle hash, reuse the ORIGINAL signature. The
+    # worker must reject: executorTier is inside the signed bytes, so the
+    # signature's bundleHash no longer matches (and _verify_signature would
+    # fail regardless).
+    store = DictStore()
+    bh, sd, pub, manifest_bytes = build_bundle(store)
+    detiered = _json.loads(manifest_bytes)
+    del detiered["pures"][0]["executorTier"]
+    detiered_bytes = _json.dumps(detiered, sort_keys=True, separators=(",", ":")).encode()
+    bh_detiered = store.put(detiered_bytes)
+    try:
+        attempt(store, bh_detiered, sd, [pub_a], [PURE_NAME])
+        check("3b. executorTier-removed manifest rejected", False, "was accepted")
+    except BundleResolutionError as exc:
+        check("3b. executorTier-removed manifest rejected", True, str(exc))
+    except Exception as exc:  # noqa: BLE001
+        check("3b. executorTier-removed manifest rejected", False, f"{type(exc).__name__}: {exc}")
 
     # Case 4: valid signature, but worker grant is empty / names another pure.
     for label, grant in [

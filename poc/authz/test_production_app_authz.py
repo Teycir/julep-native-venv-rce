@@ -12,7 +12,10 @@ For every route it:
 1. walks the real ``APIRoute.dependant`` tree and asserts the gate set equals
    the EXPECTED gate for that method+path (exact match, not "any gate");
 2. sends unauthenticated / wrong-role / right-role requests through
-   ``TestClient`` and asserts 401/403/pass respectively.
+   ``TestClient`` and asserts 401/403/pass respectively. For gated routes a
+   "pass" means the authorization gate did not reject — it is NOT proof of
+   successful business execution (handlers may legitimately 404/422 on empty
+   stores). Ungated routes must return their designed status exactly.
 
 Run:  python3 test_production_app_authz.py --src /path/to/julep
 Exit 0 only if every route's gate matches EXPECTED and every HTTP check passes.
@@ -77,6 +80,14 @@ ALLOWED = {
     "require_admin": {"admin"},
     "require_client": {"admin", "client"},
     "require_worker": {"worker"},
+}
+
+# Ungated routes must return their *designed* status, not merely "not 401/403".
+# /health/ready is a hidden probe: health.py returns 404 unless the deployment
+# sets JULEP_UNAUTHENTICATED_READY (verified in tests/server/test_health_ready_probe.py).
+UNGATED_STATUS = {
+    ("GET", "/health"): 200,
+    ("GET", "/health/ready"): 404,
 }
 
 
@@ -236,7 +247,8 @@ def main() -> int:
                     headers = {} if token is None else {"Authorization": f"Bearer {token}"}
                     status = client.request(method, url, headers=headers, **kwargs).status_code
                     if expected is None:
-                        ok = status not in {401, 403}
+                        want = UNGATED_STATUS.get((method, rel))
+                        ok = status == want if want is not None else status not in {401, 403}
                     elif identity in {"missing", "bad"}:
                         ok = status == 401
                     elif identity in ALLOWED[expected]:
@@ -246,6 +258,10 @@ def main() -> int:
                     http_failures += 0 if ok else 1
                     http_rows.append((method, rel, identity, status, ok))
 
+    print()
+    print("NOTE: for gated routes, PASS means the auth gate admitted/rejected as")
+    print("expected — handler statuses (404/422/500) reflect empty test stores, not")
+    print("business-logic success. Ungated routes must match UNGATED_STATUS exactly.")
     print()
     print(f"{'METHOD':<7} {'PATH':<40} {'IDENTITY':<8} {'STATUS':<7} RESULT")
     for method, path, identity, status, ok in http_rows:

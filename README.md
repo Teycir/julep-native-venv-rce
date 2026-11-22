@@ -10,11 +10,16 @@ The `native_venv` execution tier runs bundle-supplied source with
 verified end-to-end with a live listener (`poc/rt01/`, `evidence/rt01/`).
 
 **RT-01 — production finding, High 7.2** (`AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`).
-The authorization analysis shows exploitation requires high privileges: bundle
-publication routes are `require_admin`, and native execution additionally
-requires an Ed25519 signature from a worker-allowlisted operator key plus a
-`JULEP_PURE_NATIVE_DEPS` grant. Deployments that issue admin keys to tenants or
-expose the signing key collapse this toward `PR:L` (8.8).
+Exploitation must satisfy **three controls simultaneously**: (1) an admin-level
+API key to publish a bundle (`require_admin` routes), (2) an Ed25519 signature
+from a worker-allowlisted operator key, and (3) a worker-side
+`JULEP_PURE_NATIVE_DEPS` grant naming the pure. Compromising any one alone is
+not sufficient — e.g. a stolen admin key cannot forge the operator signature,
+and a leaked signing key cannot grant itself the worker-side native tier.
+A realistic attack scenario is compromise of a release/signing pipeline that
+holds both publication and signing capability, on a worker already granting
+the pure native tier. Deployments that issue admin keys to tenants or expose
+the signing key collapse this toward `PR:L` (8.8).
 
 **RT-02 / RT-03 — remediation bypasses, not independent vulnerabilities.** The
 hardening proposed in upstream issue #1632 (tier-aware import denylist +
@@ -80,15 +85,19 @@ native grant → worker execution` was tested at four levels:
    `poc/authz/native_grant_binding.py`) — `executorTier:"native"` lives inside
    the signed manifest bytes, so it cannot be flipped post-signing; the
    worker-side `native_grant` (`JULEP_PURE_NATIVE_DEPS`) is operator config,
-   enforced at resolution. 7/7 binding assertions pass, including the
-   env-var grant path.
+   enforced at resolution. 8/8 binding assertions pass, including direct
+   `executorTier`-removal tampering and the env-var grant path.
 
 Conclusion: ordinary client credentials cannot publish bundles or reach
-mutating admin routes; exploitation needs admin API access or operator
-signing-key compromise. This is why RT-01 is scored `PR:H` (7.2), not `PR:L`
-(8.8). Remaining deployment-specific unknowns: whether a given deployment
-delegates admin keys to tenants, and whether a third party can obtain an
-accepted signature.
+mutating admin routes. Full exploitation requires all three controls at once —
+admin publication rights, an allowlisted operator signature over a manifest
+whose `executorTier:"native"` claim is inside the signed bytes, and a
+worker-side `JULEP_PURE_NATIVE_DEPS` grant. No single compromised credential
+suffices; the realistic scenario is a release/signing pipeline holding both
+publication and signing capability targeting an already-granted worker. This
+is why RT-01 is scored `PR:H` (7.2), not `PR:L` (8.8). Remaining
+deployment-specific unknowns: whether a given deployment delegates admin keys
+to tenants, and whether a third party can obtain an accepted signature.
 
 ## Recommendation
 

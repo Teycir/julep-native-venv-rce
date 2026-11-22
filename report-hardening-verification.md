@@ -77,7 +77,7 @@ RT-01 remains **High 7.2** (`AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`, rescored afte
 
 The published PoC was re-run against the unmodified tree and reproduced the host proof: marker, host environment secret, real `id`, and `/etc/passwd` hash, exfiltrated over loopback HTTP.
 
-Key lines from `evidence/baseline_original_prior_poc.log`:
+Key lines from `evidence/hardening/baseline_original_prior_poc.log`:
 
 ```
 [2026-11-22T10:08:19Z] START baseline_original_prior_poc
@@ -87,7 +87,7 @@ Key lines from `evidence/baseline_original_prior_poc.log`:
 [2026-11-22T10:08:20Z] END baseline_original_prior_poc rc=0
 ```
 
-Proof: `evidence/baseline_original_prior_poc_proof.raw`, sha256 `aa711e8b5024db98fab9895356c48204e809b8c8226fdd9193524be733862553`.
+Proof: `evidence/hardening/baseline_original_prior_poc_proof.raw`, sha256 `aa711e8b5024db98fab9895356c48204e809b8c8226fdd9193524be733862553`.
 
 A second control using the harness against the unmodified tree (`original_direct_import`) also executed and exfiltrated (sha256 `772f793f1deecd92e245125d06d6cd27984cefac760e617764c070cf495141ff`). RT-01 is unchanged; no correction to the prior report's exploitability claim.
 
@@ -161,7 +161,7 @@ python3 poc/hardening/hardening_probe.py \
 
 #### Request / Response
 
-Observed exfil request (loopback listener; body verbatim from `evidence/A_attrgetter_bypass_proof.raw`):
+Observed exfil request (loopback listener; body verbatim from `evidence/hardening/A_attrgetter_bypass_proof.raw`):
 
 ```http
 POST /exfil HTTP/1.1
@@ -179,7 +179,7 @@ Content-Length: 2
 ok
 ```
 
-Key lines from `evidence/A_attrgetter_bypass.log`:
+Key lines from `evidence/hardening/A_attrgetter_bypass.log`:
 
 ```
 [2026-11-22T10:08:22Z] START A_attrgetter_bypass src=A pure=poc.attrgetter_bypass.v1 payload=payloads/attrgetter_bypass.py port=8922
@@ -190,16 +190,16 @@ Key lines from `evidence/A_attrgetter_bypass.log`:
 [2026-11-22T10:08:23Z] END A_attrgetter_bypass rc=0
 ```
 
-A second Variant A bypass (`evidence/A_denylist_bypass.log`, proof sha256 `837464424689adb7428c6ce9461d47d5ec9fe1c3742f6f0060b3e64cb9db837f`) uses the same `operator.attrgetter` primitive and succeeds. Direct `import os` against Variant A is blocked (`evidence/A_direct_import.log`: `pure 'poc.direct_import.v1' imports 'os', which is not permitted in the native_venv tier`), which isolates the bypass to the syntactic gap.
+A second Variant A bypass (`evidence/hardening/A_denylist_bypass.log`, proof sha256 `837464424689adb7428c6ce9461d47d5ec9fe1c3742f6f0060b3e64cb9db837f`) uses the same `operator.attrgetter` primitive and succeeds. Direct `import os` against Variant A is blocked (`evidence/hardening/A_direct_import.log`: `pure 'poc.direct_import.v1' imports 'os', which is not permitted in the native_venv tier`), which isolates the bypass to the syntactic gap.
 
 #### Evidence artifacts
 
 | Artifact | sha256 |
 |---|---|
-| `evidence/A_attrgetter_bypass_proof.raw` | `8c7acb68a5cf54241c72007a27a863d3682b912cf4860064937ab1708e6e149f` |
-| `evidence/A_attrgetter_bypass.log` | `20842224762532b50cef710be4234148bad97ab282dd51f1f347467be12eb931` |
-| `evidence/A_denylist_bypass_proof.raw` | `837464424689adb7428c6ce9461d47d5ec9fe1c3742f6f0060b3e64cb9db837f` |
-| `evidence/A_direct_import.log` | `0359bfd6483fbcd3e320e52866580aaa802dca3e602b85d0005f78e3f1ec0097` |
+| `evidence/hardening/A_attrgetter_bypass_proof.raw` | `8c7acb68a5cf54241c72007a27a863d3682b912cf4860064937ab1708e6e149f` |
+| `evidence/hardening/A_attrgetter_bypass.log` | `20842224762532b50cef710be4234148bad97ab282dd51f1f347467be12eb931` |
+| `evidence/hardening/A_denylist_bypass_proof.raw` | `837464424689adb7428c6ce9461d47d5ec9fe1c3742f6f0060b3e64cb9db837f` |
+| `evidence/hardening/A_direct_import.log` | `0359bfd6483fbcd3e320e52866580aaa802dca3e602b85d0005f78e3f1ec0097` |
 | `poc/hardening/payloads/attrgetter_bypass.py` | `4259f723766e1a1a89df911cf40b3764fd2126341d1e491835051af300409059` |
 
 #### Impact
@@ -311,7 +311,7 @@ Content-Length: 2
 ok
 ```
 
-Key lines from `evidence/B1_builtins_bypass.log`:
+Key lines from `evidence/hardening/B1_builtins_bypass.log`:
 
 ```
 [2026-11-22T10:08:28Z] START B1_builtins_bypass src=B1 pure=poc.builtins_bypass.v1 payload=payloads/builtins_bypass.py port=8926
@@ -321,15 +321,15 @@ Key lines from `evidence/B1_builtins_bypass.log`:
 [2026-11-22T10:08:29Z] END B1_builtins_bypass rc=0
 ```
 
-Direct `import os` against Variant B1 is blocked (`evidence/B1_direct_import.log`: `ImportError: __import__ not found`), isolating the bypass to object-model reflection.
+Direct `import os` against Variant B1 is blocked (`evidence/hardening/B1_direct_import.log`: `ImportError: __import__ not found`), isolating the bypass to object-model reflection.
 
 #### Evidence artifacts
 
 | Artifact | sha256 |
 |---|---|
-| `evidence/B1_builtins_bypass_proof.raw` | `561db0c3f88ccef13934ed9dda971591e3f52e6496f3eb2e0ac6e4300c4d39da` |
-| `evidence/B1_builtins_bypass.log` | `9db1fc7437abb320002ce8c62b88fc00d998ce43d3ec16ac35da996d950bf8fb` |
-| `evidence/B1_direct_import.log` | `fd24ae6fc14ebb9f2d1f2f496c1bd229c50ace31ea5c3579579e4c8fb6001ecb` |
+| `evidence/hardening/B1_builtins_bypass_proof.raw` | `561db0c3f88ccef13934ed9dda971591e3f52e6496f3eb2e0ac6e4300c4d39da` |
+| `evidence/hardening/B1_builtins_bypass.log` | `9db1fc7437abb320002ce8c62b88fc00d998ce43d3ec16ac35da996d950bf8fb` |
+| `evidence/hardening/B1_direct_import.log` | `fd24ae6fc14ebb9f2d1f2f496c1bd229c50ace31ea5c3579579e4c8fb6001ecb` |
 | `poc/hardening/payloads/builtins_bypass.py` | `62cb8a6b391926a8d67c14fda2b9c8fc510ed7cb660a466e42abe068a79daac5` |
 
 #### Impact
@@ -369,12 +369,12 @@ Variant B2 blocks every attack payload in this report:
 
 | Payload | Result | Evidence |
 |---|---|---|
-| `direct_import` | BLOCKED — `imports 'os'` | `evidence/B2_direct_import.log` |
-| `attrgetter_bypass` | RUNTIME_BLOCKED — `ImportError: __import__ not found` | `evidence/B2_attrgetter_bypass.log` |
-| `denylist_bypass` | BLOCKED — forbidden reflection attribute `__import__` | `evidence/B2_denylist_bypass.log` |
-| `builtins_bypass` | BLOCKED — forbidden reflection attribute `__subclasses__` | `evidence/B2_builtins_bypass.log` |
+| `direct_import` | BLOCKED — `imports 'os'` | `evidence/hardening/B2_direct_import.log` |
+| `attrgetter_bypass` | RUNTIME_BLOCKED — `ImportError: __import__ not found` | `evidence/hardening/B2_attrgetter_bypass.log` |
+| `denylist_bypass` | BLOCKED — forbidden reflection attribute `__import__` | `evidence/hardening/B2_denylist_bypass.log` |
+| `builtins_bypass` | BLOCKED — forbidden reflection attribute `__subclasses__` | `evidence/hardening/B2_builtins_bypass.log` |
 
-Benign pure using safe builtins executes (`evidence/B2_benign.log`: `{"count": 3, "label": "BENIGN", "ok": true, "sum": 6}`).
+Benign pure using safe builtins executes (`evidence/hardening/B2_benign.log`: `{"count": 3, "label": "BENIGN", "ok": true, "sum": 6}`).
 
 However, a legitimate native pure that imports its declared dependency fails:
 
@@ -385,7 +385,7 @@ However, a legitimate native pure that imports its declared dependency fails:
 [2026-11-22T10:08:36Z] END B2_benign_dep rc=0
 ```
 
-The same payload executes on the unmodified tree (`evidence/Original_benign_dep.log`) and on Variant A (`evidence/A_benign_dep.log`). The native tier exists to import third-party dependencies; removing import machinery makes it non-functional. Variant B2 is therefore not a deployable replacement for an OS sandbox, and it still carries unknown-bypass risk because in-process Python restriction is not a security boundary.
+The same payload executes on the unmodified tree (`evidence/hardening/Original_benign_dep.log`) and on Variant A (`evidence/hardening/A_benign_dep.log`). The native tier exists to import third-party dependencies; removing import machinery makes it non-functional. Variant B2 is therefore not a deployable replacement for an OS sandbox, and it still carries unknown-bypass risk because in-process Python restriction is not a security boundary.
 
 #### Recommendation
 
@@ -398,15 +398,15 @@ Keep layered checks only as defence-in-depth; ship the OS sandbox as the boundar
 Full inventory with sha256 is in `SHA256SUMS.txt`. Key artifacts:
 
 ```
-aa711e8b5024db98fab9895356c48204e809b8c8226fdd9193524be733862553  evidence/baseline_original_prior_poc_proof.raw
-772f793f1deecd92e245125d06d6cd27984cefac760e617764c070cf495141ff  evidence/original_direct_import_proof.raw
-8c7acb68a5cf54241c72007a27a863d3682b912cf4860064937ab1708e6e149f  evidence/A_attrgetter_bypass_proof.raw
-837464424689adb7428c6ce9461d47d5ec9fe1c3742f6f0060b3e64cb9db837f  evidence/A_denylist_bypass_proof.raw
-561db0c3f88ccef13934ed9dda971591e3f52e6496f3eb2e0ac6e4300c4d39da  evidence/B1_builtins_bypass_proof.raw
-20842224762532b50cef710be4234148bad97ab282dd51f1f347467be12eb931  evidence/A_attrgetter_bypass.log
-9db1fc7437abb320002ce8c62b88fc00d998ce43d3ec16ac35da996d950bf8fb  evidence/B1_builtins_bypass.log
-28d1d5cee132484cc954f666630929fc88871a6208a621fbb33787da18d92875  evidence/timestamps.tsv
-0bd3d1ab251a4654ced3b97713ee9707ab32371b760af7ffd58d6de5e694e48b  evidence/matrix.json
+aa711e8b5024db98fab9895356c48204e809b8c8226fdd9193524be733862553  evidence/hardening/baseline_original_prior_poc_proof.raw
+772f793f1deecd92e245125d06d6cd27984cefac760e617764c070cf495141ff  evidence/hardening/original_direct_import_proof.raw
+8c7acb68a5cf54241c72007a27a863d3682b912cf4860064937ab1708e6e149f  evidence/hardening/A_attrgetter_bypass_proof.raw
+837464424689adb7428c6ce9461d47d5ec9fe1c3742f6f0060b3e64cb9db837f  evidence/hardening/A_denylist_bypass_proof.raw
+561db0c3f88ccef13934ed9dda971591e3f52e6496f3eb2e0ac6e4300c4d39da  evidence/hardening/B1_builtins_bypass_proof.raw
+20842224762532b50cef710be4234148bad97ab282dd51f1f347467be12eb931  evidence/hardening/A_attrgetter_bypass.log
+9db1fc7437abb320002ce8c62b88fc00d998ce43d3ec16ac35da996d950bf8fb  evidence/hardening/B1_builtins_bypass.log
+28d1d5cee132484cc954f666630929fc88871a6208a621fbb33787da18d92875  evidence/hardening/timestamps.tsv
+0bd3d1ab251a4654ced3b97713ee9707ab32371b760af7ffd58d6de5e694e48b  evidence/hardening/matrix.json
 4259f723766e1a1a89df911cf40b3764fd2126341d1e491835051af300409059  poc/hardening/payloads/attrgetter_bypass.py
 62cb8a6b391926a8d67c14fda2b9c8fc510ed7cb660a466e42abe068a79daac5  poc/hardening/payloads/builtins_bypass.py
 a2b58cb14025205e812e25ebde8fa2a41d5fbdc18a828ffc2461a2fb5be38a75  poc/hardening/payloads/denylist_bypass.py
