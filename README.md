@@ -56,6 +56,47 @@ restricted builtins, and add the payloads in `poc/hardening/payloads/` as
 regression tests. Treat the native grant as a signed per-bundle capability,
 not a name-only worker allowlist.
 
+## Integrity
+
+`SHA256SUMS.txt` covers every file in this repository (57 files, verified with
+`sha256sum -c`). The per-engagement manifests inside `evidence/` are the
+original artifacts as generated during testing; their paths are relative to the
+engagement directories, not this repo root.
+
+## Reproduction environment
+
+| Component | Version |
+|---|---|
+| Upstream | `julep-ai/julep` @ `fc74d079a18c8124b2627ca4717f5a9c269267db` (`3.0.0rc6`) |
+| Python | 3.14.8 |
+| uv | 0.12.5 |
+| OS | Kali Linux, kernel 7.2.15+kali-amd64 |
+
+Full environment capture: [`evidence/hardening/environment.txt`](evidence/hardening/environment.txt)
+Hardening run matrix (14 cases, expected outcomes + raw proofs): [`evidence/hardening/matrix.json`](evidence/hardening/matrix.json), driver [`evidence/hardening/run_matrix.sh`](evidence/hardening/run_matrix.sh)
+Patch application: diffs in [`poc/hardening/patches/`](poc/hardening/patches/), resulting files in [`poc/hardening/patched/`](poc/hardening/patched/)
+
+## Open question for triage — attacker prerequisites
+
+The PoC calls `resolve_and_register(..., allowed_signers=[pub],
+native_grant=[PURE_NAME])` with a lab-generated Ed25519 key. What is **not yet
+demonstrated** is the real-world authorization chain:
+
+`external user → API → bundle publication → signature verification → native grant → worker execution`
+
+Specifically unresolved:
+
+1. Who can publish a signed bundle in a real deployment (ordinary user vs.
+   administrator-only)?
+2. Can a third-party bundle author obtain an accepted signature?
+3. Can the attacker influence the `native` tier / `JULEP_PURE_NATIVE_DEPS`, or is
+   it strictly operator-controlled?
+4. Does the deployed worker actually execute the resulting pure?
+
+If only a fully trusted administrator can sign and grant `native`, the vendor
+could argue host execution is expected behaviour. Demonstrating traversal of
+this chain with ordinary-user privileges is the highest-value remaining work.
+
 ## Layout
 
 ```
