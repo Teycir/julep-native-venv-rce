@@ -10,7 +10,7 @@ Julep can run bundle code in a locked sandbox (`wasm`) or directly on the host (
 
 In the tested version, a properly signed bundle with a worker-side native grant could execute host commands and exfiltrate data; we proved this end-to-end. The catch: this is not a normal-user bug in the default setup. It needs the operator-side publication/signing path plus the worker grant. The open question is whether Julep intended native mode to be trusted host execution or still fail-closed for bundle source.
 
-Why it matters: if native mode is meant to be trusted-only, the risk is that grants/deployments may be broader than operators expect; if bundle source is meant to stay untrusted, the current checks do not provide a real boundary.
+Why it matters: if native mode is meant to be trusted-only, the risk is that grants/deployments may be broader than operators expect; if bundle source is meant to stay untrusted, the current checks do not provide a real boundary. In either case there is a real issue to resolve — what changes is the gravity: trusted-native intent makes it an isolation/documentation/grant-scoping hardening problem, while fail-closed intent makes it a security validation bug.
 
 ## Executive summary
 
