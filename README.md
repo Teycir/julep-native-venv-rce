@@ -4,6 +4,14 @@ Start with [`vendor-facing-report.md`](vendor-facing-report.md) for vendor triag
 
 Coordinated vulnerability disclosure for `julep-ai/julep`.
 
+## Plain-language summary
+
+Julep can run bundle code in a locked sandbox (`wasm`) or directly on the host (`native_venv`). The native mode is intentionally less isolated, but the source checks reuse the sandbox's allowed-module list. That means code allowed to run natively can still ask for host powers like running commands, opening sockets, or reading process/environment data.
+
+In the tested version, a properly signed bundle with a worker-side native grant could execute host commands and exfiltrate data; we proved this end-to-end. The catch: this is not a normal-user bug in the default setup. It needs the operator-side publication/signing path plus the worker grant. The open question is whether Julep intended native mode to be trusted host execution or still fail-closed for bundle source.
+
+Why it matters: if native mode is meant to be trusted-only, the risk is that grants/deployments may be broader than operators expect; if bundle source is meant to stay untrusted, the current checks do not provide a real boundary.
+
 ## Executive summary
 
 The `native_venv` execution tier runs bundle-supplied source with
