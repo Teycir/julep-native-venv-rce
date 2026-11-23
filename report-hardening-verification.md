@@ -436,4 +436,27 @@ b37ce7941573442ce8d76626b703bf398a7b3d7f73c21e03652530a172794c7f  poc/hardening/
 
 ---
 
+
+
+## 6. Fix verification — upstream `julep-ai/julep` HEAD `fc74d079a18c8124b2627ca4717f5a9c269267db` (2026-11-23 18:12 UTC)
+
+Cloned `https://github.com/julep-ai/julep.git` at HEAD `fc74d079a18c8124b2627ca4717f5a9c269267db`
+— which is the affected commit itself (the report's audited version `3.0.0rc6`). Inspected
+`julep/registry.py`, `julep/execution/native_venv_executor.py`, `julep/worker_store.py`.
+
+| Check | Result |
+|---|---|
+| HEAD commit | `fc74d079a18c8124b2627ca4717f5a9c269267db` (= affected 3.0.0rc6 commit) |
+| Newer release tag | None — only `v3.0.0rc5` exists; no `v3.0.0rc6` tag |
+| Commits after affected commit | None (it is HEAD) |
+| `_WASM_GUEST_STDLIB_MODULES` contains `os`, `subprocess`, `socket`, `ctypes` | **YES — unchanged** |
+| `_validate_portable_source` applies wasm allowlist to native tier | **YES — unchanged** |
+| `native_venv_executor._DRIVER` calls `exec()` in host subprocess | **YES — unchanged** |
+| Worker `JULEP_PURE_NATIVE_DEPS` grant binds pure name (not source hash) | **YES — unchanged** |
+
+**Conclusion: RT-01 remains fully exploitable.** No fix released, no CVE assigned (GHSA-rhfp-jw6w-wrqq cited in issue #1632 returns 404 — unverified). The wasm-guest import allowlist is still applied to native-tier host execution, and `exec()` still runs bundle source in a real host subprocess. All researcher-proposed hardening variants (A, B1, B2) remain bypassable or incompatible against this unchanged code.
+
+---
+
+
 *End of report.*

@@ -269,6 +269,26 @@ d62cebc90b3f5bd89de2e5ff2a642e01324c5acecc36faa74f847f827f482ee6  poc/rt01/liste
 
 RT-01 remains exploitable and was re-verified at 2026-11-22T10:08:19Z–10:08:21Z. The primary fix remains OS-level sandboxing.
 
+
+## 7. Fix verification — upstream `julep-ai/julep` HEAD `fc74d079a18c8124b2627ca4717f5a9c269267db` (2026-11-23 18:12 UTC)
+
+Cloned `https://github.com/julep-ai/julep.git` at HEAD `fc74d079a18c8124b2627ca4717f5a9c269267db`
+— which is the affected commit itself (the report's audited version `3.0.0rc6`). Inspected
+`julep/registry.py`, `julep/execution/native_venv_executor.py`, `julep/worker_store.py`.
+
+| Check | Result |
+|---|---|
+| HEAD commit | `fc74d079a18c8124b2627ca4717f5a9c269267db` (= affected 3.0.0rc6 commit) |
+| Newer release tag | None — only `v3.0.0rc5` exists; no `v3.0.0rc6` tag |
+| Commits after affected commit | None (it is HEAD) |
+| `_WASM_GUEST_STDLIB_MODULES` contains `os`, `subprocess`, `socket`, `ctypes` | **YES — unchanged** |
+| `_validate_portable_source` applies wasm allowlist to native tier | **YES — unchanged** |
+| `native_venv_executor._DRIVER` calls `exec()` in host subprocess | **YES — unchanged** |
+| Worker `JULEP_PURE_NATIVE_DEPS` grant binds pure name (not source hash) | **YES — unchanged** |
+
+**Conclusion: RT-01 remains fully exploitable.** No fix released, no CVE assigned (GHSA-rhfp-jw6w-wrqq cited in issue #1632 returns 404 — unverified). The wasm-guest import allowlist is still applied to native-tier host execution, and `exec()` still runs bundle source in a real host subprocess.
+
 ---
+
 
 *End of report.*

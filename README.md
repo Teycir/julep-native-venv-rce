@@ -89,6 +89,7 @@ SHA256 manifests, timestamps, patch diffs, runnable exploit scripts).
 | 2026-11-22 | Final revision: process-level grant-scoping test now invokes the registered pure; titles normalized |
 | 2026-11-22 | Reporting revision: status/CVSS conditionality/grant-scoping impact clarified |
 | 2026-11-22T17:54:26Z | Disclosure email sent to `developers@julep.ai` (cc `diwank@julep.ai`) with `julep-native-venv-rce.zip` evidence package |
+| 2026-11-23 18:12Z | Upstream `julep-ai/julep` re-checked at HEAD `fc74d07` (the affected 3.0.0rc6 commit itself — HEAD == affected commit). **No fix**: `_WASM_GUEST_STDLIB_MODULES` still contains `os`/`subprocess`/`socket`/`ctypes`; `_validate_portable_source` still applies it to `native_venv`; `exec()` still runs bundle source in host subprocess. Only tag is v3.0.0rc5 — no v3.0.0rc6 release. |
 | pending | Vendor response / triage / CVE assignment |
 
 ## Authorization analysis — attacker prerequisites
@@ -158,6 +159,26 @@ Two architectures, per `security_contract.md` §6:
   namespace, seccomp, non-root UID, read-only rootfs, no host env, explicit
   egress policy, resource limits. Python in-process restrictions are not a
   boundary (RT-02/RT-03 bypasses; RT-04 compatibility break).
+
+
+
+## Fix verification — upstream `julep-ai/julep` HEAD `fc74d079a18c8124b2627ca4717f5a9c269267db` (2026-11-23 18:12 UTC)
+
+Cloned `https://github.com/julep-ai/julep.git` at HEAD `fc74d079a18c8124b2627ca4717f5a9c269267db`
+— **which is the affected commit itself** (the report's audited version `3.0.0rc6`). Inspected
+`julep/registry.py`, `julep/execution/native_venv_executor.py`, `julep/worker_store.py`.
+
+| Check | Result |
+|---|---|
+| HEAD commit | `fc74d079a18c8124b2627ca4717f5a9c269267db` (= affected 3.0.0rc6 commit) |
+| Newer release tag | None — only `v3.0.0rc5` exists; no `v3.0.0rc6` tag |
+| Commits after affected commit | None (it is HEAD) |
+| `_WASM_GUEST_STDLIB_MODULES` contains `os`, `subprocess`, `socket`, `ctypes` | **YES — unchanged** |
+| `_validate_portable_source` applies wasm allowlist to native tier | **YES — unchanged** |
+| `native_venv_executor._DRIVER` calls `exec()` in host subprocess | **YES — unchanged** |
+| Worker `JULEP_PURE_NATIVE_DEPS` grant binds pure name (not source hash) | **YES — unchanged** |
+
+**Conclusion: RT-01 remains fully exploitable.** No fix released, no CVE assigned (GHSA-rhfp-jw6w-wrqq cited in issue #1632 returns 404 — unverified). The wasm-guest import allowlist is still applied to native-tier host execution, and `exec()` still runs bundle source in a real host subprocess.
 
 ## Evidence hygiene
 
