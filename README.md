@@ -4,6 +4,41 @@ Start with [`vendor-facing-report.md`](vendor-facing-report.md) for vendor triag
 
 Coordinated vulnerability disclosure for `julep-ai/julep`.
 
+## Contents
+
+- [Vendor contact](#vendor-contact)
+- [Plain-language summary](#plain-language-summary)
+- [Executive summary](#executive-summary)
+- [Reports](#reports)
+- [Affected](#affected)
+- [Disclosure status](#disclosure-status)
+- [Timeline](#timeline-utc)
+- [Authorization analysis](#authorization-analysis--attacker-prerequisites)
+- [Recommendation](#recommendation)
+- [Fix verification](#fix-verification)
+- [Evidence hygiene](#evidence-hygiene)
+- [Integrity](#integrity)
+- [Reproduction environment](#reproduction-environment)
+- [Layout](#layout)
+
+## Vendor contact
+
+**Notified 2026-11-22T17:54:26Z. No reply as of 2026-11-26T13:15:06Z.**
+
+| Field | Value |
+|---|---|
+| To | `developers@julep.ai` |
+| Cc | `diwank@julep.ai` |
+| From | `teycir@protonmail.com` |
+| Subject | `[Security] Julep 3.0.0rc6 native_venv host execution` |
+| Message-ID | `<1XF-mF_ctyzOMzIJxx0MQTNa0s4DMimQ0XEXVLQJlJXL_WjUGBWhbcSMR2n-tPk9ojtK40FVOY4bHJ4jARcR6451g-pDNHDbEAvWLG4dbJU=@protonmail.com>` |
+| Attachment | `julep-native-venv-rce.zip` |
+| Prior public issue | [`julep-ai/julep#1632`](https://github.com/julep-ai/julep/issues/1632) (open) |
+
+Read it: [rendered email](evidence/disclosure/20261122T175426Z_vendor_email.md) ·
+[raw `.eml`](evidence/disclosure/20261122T175426Z_vendor_email.eml) ·
+[canonical timeline](TIMELINE.md).
+
 ## Plain-language summary
 
 Julep can run bundle code in a locked sandbox (`wasm`) or directly on the host (`native_venv`). The native mode is intentionally less isolated, but the source checks reuse the sandbox's allowed-module list. That means code allowed to run natively can still ask for host powers like running commands, opening sockets, or reading process/environment data.
@@ -74,23 +109,27 @@ Public reference: upstream issue [`julep-ai/julep#1632`](https://github.com/jule
 - Scope: `julep/registry.py::_validate_portable_source`, `Registry.register_pure_from_source`, `julep/execution/native_venv_executor.py::_DRIVER`, `julep/worker_store.py::resolve_and_register`
 - Configuration: self-hosted control plane + `native_venv` worker, Ed25519-signed bundles
 
-## Disclosure status — read first
+## Disclosure status
 
-This repository is **private**. It is the complete proof package — every claim
-is demonstrated by artifacts under `poc/` and `evidence/` (raw transcripts,
-SHA256 manifests, timestamps, patch diffs, runnable exploit scripts).
+Public since 2026-11-26T13:15:06Z. VulnCheck/CVE coordination not yet filed for this report; vendor notification
+is the 2026-11-22 email above. The repository is the complete proof package — every claim is
+demonstrated by artifacts under `poc/` and `evidence/` (raw transcripts, SHA256 manifests,
+timestamps, patch diffs, runnable exploit scripts).
 
-| When (UTC) | Step |
-|---|---|
-| 2026-11-21 | RT-01 finding verified in local authorised lab |
-| 2026-11-22 | Hardening verification engagement: variants A/B1/B2 implemented, bypass matrix executed |
-| 2026-11-22 | Authorization analysis: route inventory, auth decisions, signature chain, native-grant binding |
-| 2026-11-22 | Contract/grant-scoping revision: process-level signer test, GHSA status corrected, vendor summary added |
-| 2026-11-22 | Final revision: process-level grant-scoping test now invokes the registered pure; titles normalized |
-| 2026-11-22 | Reporting revision: status/CVSS conditionality/grant-scoping impact clarified |
-| 2026-11-22T17:54:26Z | Disclosure email sent to `developers@julep.ai` (cc `diwank@julep.ai`) with `julep-native-venv-rce.zip` evidence package |
-| 2026-11-23 18:12Z | Upstream `julep-ai/julep` re-checked at HEAD `fc74d07` (the affected 3.0.0rc6 commit itself — HEAD == affected commit). **No fix**: `_WASM_GUEST_STDLIB_MODULES` still contains `os`/`subprocess`/`socket`/`ctypes`; `_validate_portable_source` still applies it to `native_venv`; `exec()` still runs bundle source in host subprocess. Only tag is v3.0.0rc5 — no v3.0.0rc6 release. |
-| pending | Vendor response / triage / CVE assignment |
+### Timeline (UTC)
+
+| Date (UTC) | Event | Evidence |
+|---|---|---|
+| 2026-10-16T15:02:57Z | Issue `julep-ai/julep#1632` filed with initial analysis (still open) | [#1632](https://github.com/julep-ai/julep/issues/1632) |
+| 2026-11-21T21:46:13Z | RT-01 verified locally: signed `native_venv` bundle runs host source; live egress listener captured proof | `evidence/rt01/` |
+| 2026-11-22T10:08:19Z | Hardening matrix A/B1/B2 executed: 14 assertions, bypass payloads, patch diffs | `evidence/hardening/` |
+| 2026-11-22 | Authorization analysis: 25-route inventory, auth decisions, signature chain, native-grant binding | `evidence/authz/` |
+| 2026-11-22T17:54:26Z | Vendor notification sent: To `developers@julep.ai`, Cc `diwank@julep.ai`; evidence zip attached | `evidence/disclosure/` |
+| 2026-11-23T18:12:00Z | Upstream HEAD `fc74d07` re-checked: HEAD == affected 3.0.0rc6 commit; wasm allowlist still applied to native tier, `exec()` still host subprocess; **no fix** | README § Fix verification |
+| 2026-11-26T13:15:06Z | Repository made public with full proof package and vendor-contact record | this file |
+| _TBD_ | Vendor response / triage / CVE assignment | — |
+
+Canonical copy: [`TIMELINE.md`](TIMELINE.md).
 
 ## Authorization analysis — attacker prerequisites
 
@@ -162,7 +201,9 @@ Two architectures, per `security_contract.md` §6:
 
 
 
-## Fix verification — upstream `julep-ai/julep` HEAD `fc74d079a18c8124b2627ca4717f5a9c269267db` (2026-11-23 18:12 UTC)
+## Fix verification
+
+Upstream `julep-ai/julep` HEAD `fc74d079a18c8124b2627ca4717f5a9c269267db` (2026-11-23 18:12 UTC).
 
 Cloned `https://github.com/julep-ai/julep.git` at HEAD `fc74d079a18c8124b2627ca4717f5a9c269267db`
 — **which is the affected commit itself** (the report's audited version `3.0.0rc6`). Inspected
@@ -187,7 +228,7 @@ values** (`sk-live-poc-secret-…`, `sk-live-hardening-secret-…`, Ed25519 seed
 `0x42…`/`0x77…`, `local-dev` keys) generated for the lab; no real credentials
 are present. Host-identifying details (hostname, uid, kernel) are retained
 because they are part of the proof that execution escaped the sandbox; the
-repository is private and the raw engagement artifacts remain the hashed
+repository is public and the raw engagement artifacts remain the hashed
 source of truth.
 
 ## Integrity
