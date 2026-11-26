@@ -33,6 +33,7 @@ Coordinated vulnerability disclosure for `julep-ai/julep`.
 | 2026-11-23T18:12:00Z | Upstream HEAD `fc74d07` re-checked: HEAD == affected 3.0.0rc6 commit; wasm allowlist still applied to native tier, `exec()` still host subprocess; **no fix** | README § Fix verification |
 | 2026-11-26T13:15:06Z | Repository made public with full proof package and vendor-contact record | this file |
 | 2026-11-26 | VulnCheck submission filed — case `8d8e3d06-120c-407f-8948-b9fecded18a3` | VulnCheck case record |
+| 2026-11-26 | VulnCheck **declined CVE ID** — rationale: deploy docs name `JULEP_PURE_NATIVE_DEPS` as the operator trust boundary, and every path requires an operator signing key + native grant, which already allow running code on the worker | VulnCheck case record |
 | 2026-11-26T13:32:50Z | Vulners CNA CVE request emailed to `cna@vulners.com` | `submission/vulners/sent/` |
 | _TBD_ | Vendor response / triage / CVE assignment | — |
 
@@ -142,7 +143,11 @@ Public reference: upstream issue [`julep-ai/julep#1632`](https://github.com/jule
 ## Disclosure status
 
 Public since 2026-11-26T13:15:06Z. Submitted to VulnCheck for CVE coordination —
-case `8d8e3d06-120c-407f-8948-b9fecded18a3` (2026-11-26). A CVE request was also
+case `8d8e3d06-120c-407f-8948-b9fecded18a3` (2026-11-26); **VulnCheck declined
+to assign an ID**, reasoning that the deploy docs name `JULEP_PURE_NATIVE_DEPS`
+as the operator trust boundary and every path requires an operator signing key
+plus native grant — privileges that already permit running code on the worker.
+A CVE request was also
 emailed to the Vulners CNA (`cna@vulners.com`, 2026-11-26T13:32:50Z; archive in
 [`submission/vulners/sent/`](submission/vulners/sent/)). Vendor notification
 is the 2026-11-22 email above. The repository is the complete proof package — every claim is

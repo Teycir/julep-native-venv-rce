@@ -13,6 +13,7 @@ Rendered inline in [`README.md`](README.md#timeline-utc).
 | 2026-11-23T18:12:00Z | Upstream HEAD `fc74d07` re-checked: HEAD == affected 3.0.0rc6 commit; wasm allowlist still applied to native tier, `exec()` still host subprocess; **no fix** | README § Fix verification |
 | 2026-11-26T13:15:06Z | Repository made public with full proof package and vendor-contact record | this file |
 | 2026-11-26 | VulnCheck submission filed — case `8d8e3d06-120c-407f-8948-b9fecded18a3` | VulnCheck case record |
+| 2026-11-26 | VulnCheck **declined CVE ID** — rationale: deploy docs name `JULEP_PURE_NATIVE_DEPS` as the operator trust boundary, and every path requires an operator signing key + native grant, which already allow running code on the worker | VulnCheck case record |
 | 2026-11-26T13:32:50Z | Vulners CNA CVE request emailed to `cna@vulners.com` (Message-ID `<qWM0U53swAzZ9cJn_SrAeWMVeLykmnAwN5W3Ou3caXBCszNMVPA2xYqgze1BSY63LQMr2_DEK9NZl9pJ2LlFJlUqe2HJtJBCp0YVHXOT6PQ=@protonmail.com>`, `.eml` sha256 `dba97ad2…5023d`) | `submission/vulners/sent/` |
 | _TBD_ | Vendor response / triage / CVE assignment | — |
 
