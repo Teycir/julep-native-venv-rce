@@ -15,7 +15,8 @@ Rendered inline in [`README.md`](README.md#timeline-utc).
 | 2026-11-26 | VulnCheck submission filed — case `8d8e3d06-120c-407f-8948-b9fecded18a3` | VulnCheck case record |
 | 2026-11-26 | VulnCheck **declined CVE ID** — rationale: deploy docs name `JULEP_PURE_NATIVE_DEPS` as the operator trust boundary, and every path requires an operator signing key + native grant, which already allow running code on the worker | VulnCheck case record |
 | 2026-11-26T13:32:50Z | Vulners CNA CVE request emailed to `cna@vulners.com` (Message-ID `<qWM0U53swAzZ9cJn_SrAeWMVeLykmnAwN5W3Ou3caXBCszNMVPA2xYqgze1BSY63LQMr2_DEK9NZl9pJ2LlFJlUqe2HJtJBCp0YVHXOT6PQ=@protonmail.com>`, `.eml` sha256 `dba97ad2…5023d`) | `submission/vulners/sent/` |
-| _TBD_ | Vendor response / triage / CVE assignment | — |
+| 2026-11-26 | **CVE path closed** — VulnCheck declined to assign an ID; Vulners request abandoned (no reply pursued). Disclosure proceeds via public repo + open issue `julep-ai/julep#1632` + vendor email | this file |
+| _TBD_ | Vendor response / triage | — |
 
 ## Notes
 
