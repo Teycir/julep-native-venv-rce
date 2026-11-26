@@ -6,13 +6,13 @@ Coordinated vulnerability disclosure for `julep-ai/julep`.
 
 ## Contents
 
+- [Timeline (UTC)](#timeline-utc)
 - [Vendor contact](#vendor-contact)
 - [Plain-language summary](#plain-language-summary)
 - [Executive summary](#executive-summary)
 - [Reports](#reports)
 - [Affected](#affected)
 - [Disclosure status](#disclosure-status)
-- [Timeline](#timeline-utc)
 - [Authorization analysis](#authorization-analysis--attacker-prerequisites)
 - [Recommendation](#recommendation)
 - [Fix verification](#fix-verification)
@@ -20,6 +20,23 @@ Coordinated vulnerability disclosure for `julep-ai/julep`.
 - [Integrity](#integrity)
 - [Reproduction environment](#reproduction-environment)
 - [Layout](#layout)
+
+## Timeline (UTC)
+
+| Date (UTC) | Event | Evidence |
+|---|---|---|
+| 2026-10-16T15:02:57Z | Issue `julep-ai/julep#1632` filed with initial analysis (still open) | [#1632](https://github.com/julep-ai/julep/issues/1632) |
+| 2026-11-21T21:46:13Z | RT-01 verified locally: signed `native_venv` bundle runs host source; live egress listener captured proof | `evidence/rt01/` |
+| 2026-11-22T10:08:19Z | Hardening matrix A/B1/B2 executed: 14 assertions, bypass payloads, patch diffs | `evidence/hardening/` |
+| 2026-11-22 | Authorization analysis: 25-route inventory, auth decisions, signature chain, native-grant binding | `evidence/authz/` |
+| 2026-11-22T17:54:26Z | Vendor notification sent: To `developers@julep.ai`, Cc `diwank@julep.ai`; evidence zip attached | `evidence/disclosure/` |
+| 2026-11-23T18:12:00Z | Upstream HEAD `fc74d07` re-checked: HEAD == affected 3.0.0rc6 commit; wasm allowlist still applied to native tier, `exec()` still host subprocess; **no fix** | README § Fix verification |
+| 2026-11-26T13:15:06Z | Repository made public with full proof package and vendor-contact record | this file |
+| 2026-11-26 | VulnCheck submission filed — case `8d8e3d06-120c-407f-8948-b9fecded18a3` | VulnCheck case record |
+| 2026-11-26T13:32:50Z | Vulners CNA CVE request emailed to `cna@vulners.com` | `submission/vulners/sent/` |
+| _TBD_ | Vendor response / triage / CVE assignment | — |
+
+Canonical copy: [`TIMELINE.md`](TIMELINE.md).
 
 ## Vendor contact
 
@@ -37,7 +54,20 @@ Coordinated vulnerability disclosure for `julep-ai/julep`.
 
 Read it: [rendered email](evidence/disclosure/20261122T175426Z_vendor_email.md) ·
 [raw `.eml`](evidence/disclosure/20261122T175426Z_vendor_email.eml) ·
-[canonical timeline](TIMELINE.md).
+[text copy](evidence/disclosure/20261122T175426Z_vendor_email.eml.txt) ·
+[hashes](evidence/disclosure/hashes.txt).
+
+**Proof of notification.** The archived `.eml` is a byte-identical ProtonMail
+export of the sent message. Its headers carry ProtonMail's own
+`X-Pm-Origin: internal`, `X-Pm-Content-Encryption: on-compose`,
+`X-Pm-Scheduled-Sent-Original-Time`, and
+`X-Pm-Recipient-Authentication`/`X-Pm-Recipient-Encryption` fields — server-side
+stamps only present on mail actually handed to ProtonMail's outbound pipeline.
+The `Date:` header (`Sun, 22 Nov 2026 17:54:26 +0000`) and `Message-Id` above
+are the canonical identifiers for this notification; the `.eml` sha256 is
+`163876d3144e20f3dd6f97932e49952f17abf64cbbcb9cd00c99f89b59053868`
+(recorded in [`evidence/disclosure/hashes.txt`](evidence/disclosure/hashes.txt)).
+Inbox and spam were re-checked on 2026-11-26: **no reply received**.
 
 ## Plain-language summary
 
@@ -111,25 +141,15 @@ Public reference: upstream issue [`julep-ai/julep#1632`](https://github.com/jule
 
 ## Disclosure status
 
-Public since 2026-11-26T13:15:06Z. VulnCheck/CVE coordination not yet filed for this report; vendor notification
+Public since 2026-11-26T13:15:06Z. Submitted to VulnCheck for CVE coordination —
+case `8d8e3d06-120c-407f-8948-b9fecded18a3` (2026-11-26). A CVE request was also
+emailed to the Vulners CNA (`cna@vulners.com`, 2026-11-26T13:32:50Z; archive in
+[`submission/vulners/sent/`](submission/vulners/sent/)). Vendor notification
 is the 2026-11-22 email above. The repository is the complete proof package — every claim is
 demonstrated by artifacts under `poc/` and `evidence/` (raw transcripts, SHA256 manifests,
 timestamps, patch diffs, runnable exploit scripts).
 
-### Timeline (UTC)
-
-| Date (UTC) | Event | Evidence |
-|---|---|---|
-| 2026-10-16T15:02:57Z | Issue `julep-ai/julep#1632` filed with initial analysis (still open) | [#1632](https://github.com/julep-ai/julep/issues/1632) |
-| 2026-11-21T21:46:13Z | RT-01 verified locally: signed `native_venv` bundle runs host source; live egress listener captured proof | `evidence/rt01/` |
-| 2026-11-22T10:08:19Z | Hardening matrix A/B1/B2 executed: 14 assertions, bypass payloads, patch diffs | `evidence/hardening/` |
-| 2026-11-22 | Authorization analysis: 25-route inventory, auth decisions, signature chain, native-grant binding | `evidence/authz/` |
-| 2026-11-22T17:54:26Z | Vendor notification sent: To `developers@julep.ai`, Cc `diwank@julep.ai`; evidence zip attached | `evidence/disclosure/` |
-| 2026-11-23T18:12:00Z | Upstream HEAD `fc74d07` re-checked: HEAD == affected 3.0.0rc6 commit; wasm allowlist still applied to native tier, `exec()` still host subprocess; **no fix** | README § Fix verification |
-| 2026-11-26T13:15:06Z | Repository made public with full proof package and vendor-contact record | this file |
-| _TBD_ | Vendor response / triage / CVE assignment | — |
-
-Canonical copy: [`TIMELINE.md`](TIMELINE.md).
+See [Timeline (UTC)](#timeline-utc) above for the full event history.
 
 ## Authorization analysis — attacker prerequisites
 
@@ -273,4 +293,5 @@ evidence/hardening/                verification logs, matrix.json, timestamps
 evidence/authz/                    route matrix, live wiring + signature proofs
 SHA256SUMS.txt                     repo-wide integrity manifest
 SHA256SUMS-hardening.txt           original hardening-engagement manifest
+submission/vulners/                Vulners CNA email draft + sent archive
 ```

@@ -1,0 +1,66 @@
+To: cna@vulners.com
+Subject: CVE request — Julep: native_venv tier executes arbitrary bundle source → host RCE (High, CVSS 7.2)
+
+# Julep — native_venv tier executes arbitrary bundle source → host RCE (JULEP-2026-01)
+
+Also submitted to VulnCheck, case `8d8e3d06-120c-407f-8948-b9fecded18a3` (2026-11-26) — please check for duplicates across both queues.
+
+## Severity
+
+- **High** — CVSS 3.1 **7.2** — `AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H`
+  - Calculator: https://www.first.org/cvss/calculator/3.1#CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H
+  - Conditional alternates: 8.8 (`PR:L`) if a deployment delegates bundle signing to tenants or exposes the operator signing key; 6.7 (`AV:L`) if bundle introduction is treated as a local privileged operation. All scores are conditional hypotheses pending vendor validation of the deployment-specific attacker path.
+- **CWE:** CWE-94 (Improper Control of Generation of Code — Code Injection)
+
+## Affected product
+
+`julep-ai/julep` @ `fc74d079a18c8124b2627ca4717f5a9c269267db` (version `3.0.0rc6`; this commit is upstream HEAD at time of audit — no fix released). Self-hosted control plane + `native_venv` worker, Ed25519-signed bundles. Exploitation requires: operator-side bundle publication/signing, a worker-allowlisted signer, a worker-side `JULEP_PURE_NATIVE_DEPS` grant naming the pure, and admin release/deployment authorization where the path requires it. No unauthenticated or client-role path to introduce executable source was found (25-route authz inventory verified).
+
+## Summary
+
+`julep/registry.py::_validate_portable_source` applies `_WASM_GUEST_STDLIB_MODULES` — the wasm guest's stdlib allowlist — to `native_venv`-tier source. That allowlist permits `os`, `subprocess`, `socket`, `ctypes`, etc. (neutered stubs in wasm, fully capable on the host). `julep/execution/native_venv_executor.py::_DRIVER` then runs bundle source via `exec(source, {"pure": pure})` in a real host subprocess with no container/namespace/seccomp isolation. A signed bundle granted native execution achieves arbitrary host code execution and data exfiltration. Bundle signatures are detached provenance checks (`executorTier` is inside signed manifest bytes); the `JULEP_PURE_NATIVE_DEPS` grant authorizes pure names, not source hashes — a process-level test with four OS workers, two allowlisted signers, and one shared artifact store showed fresh workers resolving and invoking different signed bundles under the same granted name.
+
+## Verified (live, 2026-11-21T21:46:13Z)
+
+Signed `native_venv` bundle (`poc.native_rce.v1`) containing `import subprocess`/`import os`/socket exfil payload was resolved via `worker_store.resolve_and_register` and executed by the native executor; a live listener on `127.0.0.1:8899` captured the exfiltrated proof (marker file, env vars, `id`/`uname` output). Raw transcript: `evidence/rt01/poc-run.log` + `evidence/rt01/proof.raw` in the public repo.
+
+## Impact
+
+- Host-level arbitrary code execution as the worker process user: file/env secret reads, command execution, outbound sockets, data exfiltration.
+- Grant binds pure *name*, not content: workers can execute alternate signed bundles under the same granted name (deployment-consistency observation).
+- Contract ambiguity flagged for vendor: registration docstring calls bundle source "untrusted (if signed)" that must "run fail-closed through its selected tier"; tier docs call `JULEP_PURE_NATIVE_DEPS` "the operator trust boundary" for source running "as native code."
+
+## Steps to reproduce
+
+Full report, evidence, and runnable PoC: **https://github.com/Teycir/julep-native-venv-rce**
+
+```bash
+python poc/rt01/poc_native_venv_rce.py   # self-contained; starts its own listener on 127.0.0.1:8899
+```
+
+- `poc/rt01/` — original RCE PoC + listener
+- `poc/hardening/` — researcher-proposed remediation variants A/B1/B2, bypass payloads, 14-assertion run matrix
+- `poc/authz/` — 25-route authorization inventory, signature + native-grant binding proofs
+- `evidence/` — raw transcripts, SHA256 manifests, timestamps
+- `vendor-facing-report.md` — concise vendor triage summary; `report-rt01.md` — full finding report
+
+## Root cause locations
+
+- `julep/registry.py:150` — `_validate_portable_source` applies wasm allowlist to native tier
+- `julep/registry.py:407` — `register_pure_from_source` accepts `tier="native_venv"`
+- `julep/execution/native_venv_executor.py:25,39` — `_DRIVER` `exec()` in host subprocess
+- `julep/worker_store.py:109,338` — `_manifest_pures` / native grant check binds name, not source hash
+
+## Suggested remediation
+
+- If native execution is trusted-only: keep the tier for operator-published bundles; use a native-tier allowlist or explicitly document that the grant waives source restrictions; dedicated worker identity, no host secrets, egress allowlist; consider binding grants to `(name, sourceHash)`.
+- If bundles are untrusted/third-party: real OS isolation — container/namespace, seccomp, non-root UID, read-only rootfs, no host env, explicit egress policy, resource limits. Python in-process restrictions are not a boundary (demonstrated bypasses in `poc/hardening/`).
+
+## Disclosure status
+
+- Reporter: Teycir. LLM-assisted analysis/drafting; all exploitation executed and verified by the reporter against a live local build.
+- VulnCheck case ID: `8d8e3d06-120c-407f-8948-b9fecded18a3` (submitted 2026-11-26).
+- Vendor contact: email to `developers@julep.ai` (Cc `diwank@julep.ai`) sent 2026-11-22T17:54:26Z, Message-ID `<1XF-mF_ctyzOMzIJxx0MQTNa0s4DMimQ0XEXVLQJlJXL_WjUGBWhbcSMR2n-tPk9ojtK40FVOY4bHJ4jARcR6451g-pDNHDbEAvWLG4dbJU=@protonmail.com>`; archived `.eml` sha256 `163876d3144e20f3dd6f97932e49952f17abf64cbbcb9cd00c99f89b59053868`. Prior public issue: `julep-ai/julep#1632` (open). No vendor reply as of 2026-11-26.
+- Public report repository: https://github.com/Teycir/julep-native-venv-rce (public since 2026-11-26T13:15:06Z).
+- Related: GHSA-rhfp-jw6w-wrqq cited in issue #1632 currently returns 404 — cited-but-unverified.
+- Timing: deferred to vendor/CNA; no fixed-day embargo proposed.
